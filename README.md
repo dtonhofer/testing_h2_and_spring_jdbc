@@ -30,7 +30,8 @@ Messages have a "state". A message just sent is in state "fresh". After receptio
 the receiving agent updates the message's state to "seen" so that the
 messages are not picked up again during the next poll.
 
-The JUnit5 test class to run is `TestAgentsExchangingMsgs`.
+The JUnit5 test class to run is
+[`TestAgentsExchangingMsgs`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/agents_and_msgs/TestAgentsExchangingMsgs.java).
 
 ## Storing java.time.Instant
 
@@ -43,7 +44,8 @@ local time zones configured in the database server, the JDBC driver, or otherwis
 getting in the way, possible only on one side of the back-and-forth of the data. 
 Here we are testing that.
 
-The Junit5 test class to run is `TestStoringInstants`.
+The JUnit5 test class to run is
+[`TestStoringInstants`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/storing_instants/TestStoringInstants.java).
 
 ## Trying and testing transactions
 
@@ -57,12 +59,14 @@ how to use transactions under Spring JDBC.
 
 The Junit5 test classes to run are:
 
-- `TestElicitingDirtyReads`: Try to elicit a "dirty read" whereby transaction T1
+- [`TestElicitingDirtyReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDirtyReads.java):
+  Try to elicit a "dirty read" whereby transaction T1
   reads data written but not yet committed by transaction T2. This crass unsoundness is
   supposed to go away at transaction level `READ COMMITTED` and above, and it does.
-- `TestElicitingNonRepeatableReads`:  Try to elicit a "non-repeateable read" whereby transaction T1
+- [`TestElicitingNonRepeatableReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingNonRepeatableReads.java):
+  Try to elicit a "non-repeateable read" whereby transaction T1
   reads data set A (defined by some predicate), another transaction T2 changes that set and
   commits, and then transaction T1 re-reads that data set and finds it has changed.
   This unsoundness is supposed to go away at transaction level `REPEATABLE READ` and above, and it does.
-- `TestElicitingPhantomReads`
-- `TestVariousSequences`
+- [`TestElicitingPhantomReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingPhantomReads.java): ...
+- [`TestVariousSequences`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestVariousSequences.java): ...
