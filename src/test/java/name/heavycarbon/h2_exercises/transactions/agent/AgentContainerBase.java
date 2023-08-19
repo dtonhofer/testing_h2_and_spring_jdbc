@@ -11,6 +11,10 @@ import java.util.Map;
 
 public abstract class AgentContainerBase {
 
+    // a test may select on of the following operations
+
+    public enum Op {Insert, Update, Delete}
+
     private Map<AgentId, Agent> agentMap;
 
     // fire-once setter for the agentMap, set it to an unmodifiable map
@@ -59,7 +63,7 @@ public abstract class AgentContainerBase {
     }
 
     // Called from main thread
-    // TODO: If the agent threads deadlock, this method will wait forever.
+    // TODO: If the agent threads deadlock or livelock, this method will wait forever.
     // TODO: It should issue an across-the board interrupt instead.
     // TODO: Or just terminate, the agent threads are daemons after all.
 
@@ -76,5 +80,4 @@ public abstract class AgentContainerBase {
         }
     }
 
-    public enum Op {Insert, Update, Delete}
 }
