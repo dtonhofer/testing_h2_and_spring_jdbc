@@ -1,7 +1,9 @@
 # Exercises with the H2 database and Spring JDBC
 
 Code to exercise myself with H2 and Spring JDBC, including exercising the
-behaviour of transactions.
+behaviour of transactions. You know the drill!
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/trying_stuff_until_it_works.jpg" width="300" alt="Trying stuff until it works" />
 
 Some links:
 
@@ -70,3 +72,23 @@ The Junit5 test classes to run are:
   This unsoundness is supposed to go away at transaction level `REPEATABLE READ` and above, and it does.
 - [`TestElicitingPhantomReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingPhantomReads.java): ...
 - [`TestVariousSequences`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestVariousSequences.java): ...
+
+### Isolation Levels matrix
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/isolation_levels_matrix.png" width="400" alt="isolation levels matrix" />
+
+### Dirty Read sequence
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/dirty_read_sequence.png" width="400" alt="dirty read sequence" />
+
+### Non-Repeatable Read sequence
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/non_repeatable_read_sequence.png" width="400" alt="non-repeatable read sequence" />
+
+### Phantom Read sequence
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/phantom_read_sequence.png" width="400" alt="phantom read sequence" />
+
+
+
+
