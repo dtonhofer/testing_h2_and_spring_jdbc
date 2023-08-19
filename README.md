@@ -1,6 +1,12 @@
-# Testing working with the H2 database with Spring JDBC
+# Exercises with the H2 database and Spring JDBC
 
-Code to exercise myself with H2 and Spring JDBC, including testing behaviour of transactions.
+Code to exercise myself with H2 and Spring JDBC, including exercising the
+behaviour of transactions.
+
+Some links:
+
+- [Spring Data JDBC](https://spring.io/projects/spring-data-jdbc)
+- [The H2 database](http://h2database.com/html/main.html)
 
 What we have:
 
@@ -30,9 +36,12 @@ The JUnit5 test class to run is `TestAgentsExchangingMsgs`.
 
 Package `name.heavycarbon.h2_exercises.storing_instants`.
 
-A perennial problem is to make sure a `java.util.Date` or better a `[java.time.Instant](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/time/Instant.html)`
-is correctly stored in and retrieved from a database, with no mysterious shifts due local time zones configured in the database server, the JDBC driver, or otherwise,
-getting in the way, possible only on one side of the back-and-forth of the data. Here we are testing that.
+A perennial problem is to make sure a `java.util.Date` or better a 
+`[java.time.Instant](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/time/Instant.html)`
+is correctly stored in and retrieved from a database, with no mysterious shifts due
+local time zones configured in the database server, the JDBC driver, or otherwise,
+getting in the way, possible only on one side of the back-and-forth of the data. 
+Here we are testing that.
 
 The Junit5 test class to run is `TestStoringInstants`.
 
