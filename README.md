@@ -1,9 +1,11 @@
 # Exercises with the H2 database and Spring JDBC
 
-Code to exercise myself with H2 and Spring JDBC, including exercising the
-behaviour of transactions. You know the drill!
+Code written to exercise myself with H2 and Spring JDBC, including exercising the
+behaviour of transactions. 
 
-<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/trying_stuff_until_it_works.jpg" width="300" alt="Trying stuff until it works" />
+You know the drill! 
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/trying_stuff_until_it_works.png" alt="Trying stuff until it works" />
 
 Some links:
 
