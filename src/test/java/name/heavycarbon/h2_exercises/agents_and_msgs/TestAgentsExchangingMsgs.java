@@ -19,12 +19,12 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 // ---
-// This is not REALLY a JUnit test as we don't check anything.
-// This is more like some code to start & run a set of independent threads
-// ("agents") that send messages to each other through an H2 table, poll for new
-// messages, and acknowledge the messages.
+// Some code to start & run a set of independent threads ("agents") that send
+// messages to each other through an H2 table, poll for new messages, and
+// acknowledge the messages.
 //
-// There may be any number of agents, but configured by default are 2.
+// he executable part is packaged as a JUnit5 test but it doesn't check anything,
+// it just runs a fixed number of agents for a fixed number of seconds.
 //
 // There are two type of messages:
 //
@@ -45,6 +45,18 @@ import java.util.stream.IntStream;
 @AutoConfigureJdbc
 @SpringBootTest(classes = {TestAgentsExchangingMsgs.class, Db.class})
 public class TestAgentsExchangingMsgs {
+
+    // ===
+    // How many agents to run
+    // ===
+
+    private final int agentCount = 10;
+
+    // ===
+    // How long to run the agents
+    // ===
+
+    private final Duration runTime = Duration.of(5, ChronoUnit.SECONDS);
 
     // This class cannot be autowired by constructor (it would need some additional glue
     // code for this). We just have a "Db" field (with an instance that carries a
@@ -130,11 +142,7 @@ public class TestAgentsExchangingMsgs {
     @Test
     void runAgents() {
         db.setupDatabase(true);
-        {
-            final Duration runTime = Duration.of(5, ChronoUnit.SECONDS);
-            final int agentCount = 10;
-            runMsgExchangingAgents(agentCount, runTime);
-        }
+        runMsgExchangingAgents(agentCount, runTime);
     }
 
 }

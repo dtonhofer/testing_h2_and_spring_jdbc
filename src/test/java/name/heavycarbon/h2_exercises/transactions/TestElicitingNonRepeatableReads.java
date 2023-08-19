@@ -1,6 +1,5 @@
 package name.heavycarbon.h2_exercises.transactions;
 
-import name.heavycarbon.h2_exercises.transactions.agent.AppState;
 import name.heavycarbon.h2_exercises.transactions.agent.TransactionResult2;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
@@ -28,12 +27,12 @@ import java.util.Optional;
 // ---
 
 // Assumption that the classes with the methods marked "Transactional" needs to be injected for a
-// valid "transactional proxy" to be slapped around Agent1Transactional.
+// valid "transactional proxy" to be slapped around them.
 
 @Slf4j
 @AutoConfigureJdbc
 @SpringBootTest(classes = {Db.class, SessionManip.class, ModifierTransactional.class, ReaderTransactional.class})
-public class TestNonRepeatableRead {
+public class TestElicitingNonRepeatableReads {
 
     private enum Expected {Sound, NonRepeatableRead}
 

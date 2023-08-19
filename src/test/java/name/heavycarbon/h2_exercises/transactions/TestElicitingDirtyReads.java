@@ -1,7 +1,6 @@
 package name.heavycarbon.h2_exercises.transactions;
 
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerBase.Op;
-import name.heavycarbon.h2_exercises.transactions.agent.AppState;
 import name.heavycarbon.h2_exercises.transactions.agent.TransactionResult2;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
@@ -24,17 +23,18 @@ import java.util.List;
 import java.util.Optional;
 
 // ---
-// "Dirty Reads" are a weak unsoundness that only occur in the lowest isolation level READ_UNCOMMITTED
-// i.e. if there are no transactions at all.
+// Try to elicit a "dirty read" whereby transaction T1
+// reads data written but not yet committed by transaction T2. This crass unsoundness is
+// supposed to go away at transaction level `READ COMMITTED` and above, and it does.
 // ---
 
 // Assumption that the classes with the methods marked "Transactional" needs to be injected for a
-// valid "transactional proxy" to be slapped around Agent1Transactional.
+// valid "transactional proxy" to be slapped around them.
 
 @Slf4j
 @AutoConfigureJdbc
 @SpringBootTest(classes = {Db.class, SessionManip.class, ModifierTransactional.class, ReaderTransactional.class})
-public class TestDirtyReads {
+public class TestElicitingDirtyReads {
 
     private enum Expected {Sound, DirtyRead}
 

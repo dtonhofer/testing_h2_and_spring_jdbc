@@ -1,7 +1,6 @@
 package name.heavycarbon.h2_exercises.transactions;
 
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerBase.Op;
-import name.heavycarbon.h2_exercises.transactions.agent.AppState;
 import name.heavycarbon.h2_exercises.transactions.agent.TransactionResult2;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
@@ -34,7 +33,7 @@ import java.util.Optional;
 @Slf4j
 @AutoConfigureJdbc
 @SpringBootTest(classes = {Db.class, SessionManip.class, ModifierTransactional.class, ReaderTransactional.class})
-public class TestPhantomRead {
+public class TestElicitingPhantomReads {
 
     private enum Expected {Sound, PhantomRead}
 
