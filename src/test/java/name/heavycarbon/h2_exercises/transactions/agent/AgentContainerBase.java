@@ -7,6 +7,7 @@ package name.heavycarbon.h2_exercises.transactions.agent;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 public abstract class AgentContainerBase {
@@ -19,11 +20,15 @@ public abstract class AgentContainerBase {
 
     // fire-once setter for the agentMap, set it to an unmodifiable map
 
-    protected void setUnmodifiableAgentMap(@NotNull Map<AgentId, Agent> agentMap) {
-        if (this.agentMap != null) {
-            throw new IllegalStateException("AgentMap has already been set");
+    protected void setUnmodifiableAgentMap(Agent... agents) {
+        Map<AgentId, Agent> agentMapTmp = new HashMap<>();
+        for (Agent agent : agents) {
+            agentMapTmp.put(agent.agentId(),agent);
+            agent.thread().setDaemon(true);
+            agent.thread().setName(agent.agentId().toString());
+            agent.runnable().setAnyThreadTerminatedBadly(this::isAnyThreadTerminatedBadly);
         }
-        this.agentMap = Collections.unmodifiableMap(agentMap);
+        this.agentMap = Collections.unmodifiableMap(agentMapTmp);
     }
 
     protected @NotNull Map<AgentId, Agent> getAgentMap() {

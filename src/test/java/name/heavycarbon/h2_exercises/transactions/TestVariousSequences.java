@@ -3,8 +3,8 @@ package name.heavycarbon.h2_exercises.transactions;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
 import name.heavycarbon.h2_exercises.transactions.db.StuffId;
-import name.heavycarbon.h2_exercises.transactions.nonserializable.AgentContainer_NonSerializable;
-import name.heavycarbon.h2_exercises.transactions.nonserializable.ReadWriteTransactional;
+import name.heavycarbon.h2_exercises.transactions.non_serializable.AgentContainer_NonSerializable;
+import name.heavycarbon.h2_exercises.transactions.non_serializable.ReadWriteTransactional;
 import name.heavycarbon.h2_exercises.transactions.session.Isol;
 import name.heavycarbon.h2_exercises.transactions.session.SessionManip;
 import lombok.extern.slf4j.Slf4j;
@@ -14,8 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureJdbc;
 import org.springframework.boot.test.context.SpringBootTest;
-import name.heavycarbon.h2_exercises.transactions.nonserializable.ReadWriteRunnable.LeftAndRightStuffId;
-import name.heavycarbon.h2_exercises.transactions.nonserializable.ReadWriteRunnable.Role2Behaviour;
+import name.heavycarbon.h2_exercises.transactions.non_serializable.LeftAndRightStuffId;
+import name.heavycarbon.h2_exercises.transactions.non_serializable.ReadWriteRunnable.Role2Behaviour;
 
 // ---
 // Trying out various sequences, some of which cannot be serialized or "snapshotted".

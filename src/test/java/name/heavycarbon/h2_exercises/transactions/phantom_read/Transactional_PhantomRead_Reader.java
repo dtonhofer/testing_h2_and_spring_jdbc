@@ -1,13 +1,14 @@
 package name.heavycarbon.h2_exercises.transactions.phantom_read;
 
-import name.heavycarbon.h2_exercises.transactions.agent.AgentRunnable;
+import lombok.extern.slf4j.Slf4j;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentRunnableBase;
 import name.heavycarbon.h2_exercises.transactions.agent.TransactionResult2;
-import name.heavycarbon.h2_exercises.transactions.common.ReaderTransactionalInterface;
+import name.heavycarbon.h2_exercises.transactions.common.MyTransactional;
+import name.heavycarbon.h2_exercises.transactions.common.TransactionalInterface_Reader;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
 import name.heavycarbon.h2_exercises.transactions.db.Stuff;
 import name.heavycarbon.h2_exercises.transactions.session.SessionManip;
-import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -18,23 +19,28 @@ import java.util.Optional;
 
 // ---
 // Class holding the methods annotated "@Transactional"
-// Spring will weave some code around those methods.
-// - This class must be a Component, otherwise @Transactional does nothing.
-// - @Transactional annotations must be on the "public" methods otherwise @Transactional does nothing.
+//
+// Spring will weave some code around those methods using Spring
+// Aspect-Oriented-Programming. A look at a stacktrace is of some interest.
+//
+// => This class must be a @Component, otherwise @Transactional does nothing.
+// => @Transactional annotations must be methods called from other objects otherwise
+//   @Transactional does nothing. In particular, calling @Transactional methods
+//   from other methods of the same class does nothing, as the IDE warns us about.
+
 // ---
-
-// This class being "autowired", pass any variable values through method calls
-// rather than the constructor.
-
-// The transaction level is left unspecified in the annotation and set explicitly
-// inside the transaction.
-// @Transactional
-// instead of
-// @Transactional(isolation = Isolation.READ_UNCOMMITTED)
+// Note that this class is autowired with references to classes doing database
+// queries, and any additional arguments that the transactional method needs are
+// passed in the method call.
+//
+// The transaction level is left unspecified in the annotation and is set explicitly
+// inside the transaction. We annotate with "@Transactional" instead of for example
+// "@Transactional(isolation = Isolation.READ_UNCOMMITTED)"
+// ---
 
 @Slf4j
 @Component
-public class ReaderTransactional implements ReaderTransactionalInterface {
+public class Transactional_PhantomRead_Reader implements TransactionalInterface_Reader, MyTransactional {
 
     @Autowired
     private Db db;
@@ -43,15 +49,15 @@ public class ReaderTransactional implements ReaderTransactionalInterface {
     private SessionManip sm;
 
     @Transactional
-    public @NotNull Optional<TransactionResult2> runInsideTransaction(@NotNull AgentRunnable ar) {
-        log.info("{} starting", ar.agentId);
+    public @NotNull Optional<TransactionResult2> runStateMachineLoopInsideTransaction(@NotNull AgentRunnableBase ar) {
+        log.info("{} inside transaction.", ar.agentId);
+        sm.setMySessionIsolationLevel(ar.isol);
         List<Stuff> readResult1 = null;
         List<Stuff> readResult2 = null;
-        sm.setMySessionIsolationLevel(ar.isol);
         boolean interrupted = false; // set when the thread notices it has been interrupted
         try {
             synchronized (ar.appState) {
-                log.info("{} in critical section", ar.agentId);
+                log.info("{} in critical section.", ar.agentId);
                 while (ar.isContinue()) {
                     switch (ar.appState.get()) {
                         case 0 -> {
@@ -74,10 +80,7 @@ public class ReaderTransactional implements ReaderTransactionalInterface {
             interrupted = true;
         }
         log.info(ar.finalMessage(interrupted));
-        if (readResult1 != null && readResult2 != null) {
-            return Optional.of(new TransactionResult2(readResult1, readResult2));
-        } else {
-            return Optional.empty();
-        }
+        return TransactionResult2.makeOptional(readResult1, readResult2);
     }
+
 }

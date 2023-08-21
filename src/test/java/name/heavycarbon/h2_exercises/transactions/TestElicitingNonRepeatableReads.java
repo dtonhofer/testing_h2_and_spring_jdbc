@@ -6,8 +6,8 @@ import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
 import name.heavycarbon.h2_exercises.transactions.db.Stuff;
 import name.heavycarbon.h2_exercises.transactions.db.StuffId;
 import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.AgentContainer_NonRepeatableRead;
-import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.ModifierTransactional;
-import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.ReaderTransactional;
+import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.Transactional_NonRepeatableRead_Modifier;
+import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.Transactional_NonRepeatableRead_Reader;
 import name.heavycarbon.h2_exercises.transactions.session.Isol;
 import name.heavycarbon.h2_exercises.transactions.session.SessionManip;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +31,7 @@ import java.util.Optional;
 
 @Slf4j
 @AutoConfigureJdbc
-@SpringBootTest(classes = {Db.class, SessionManip.class, ModifierTransactional.class, ReaderTransactional.class})
+@SpringBootTest(classes = {Db.class, SessionManip.class, Transactional_NonRepeatableRead_Modifier.class, Transactional_NonRepeatableRead_Reader.class})
 public class TestElicitingNonRepeatableReads {
 
     private enum Expected {Sound, NonRepeatableRead}
@@ -40,10 +40,10 @@ public class TestElicitingNonRepeatableReads {
     private Db db;
 
     @Autowired
-    private ModifierTransactional inserterTx;
+    private Transactional_NonRepeatableRead_Modifier inserterTx;
 
     @Autowired
-    private ReaderTransactional readerTx;
+    private Transactional_NonRepeatableRead_Reader readerTx;
 
     private record SetupData(@NotNull List<Stuff> initialRows, @NotNull StuffId modifyThisStuffId) {}
 

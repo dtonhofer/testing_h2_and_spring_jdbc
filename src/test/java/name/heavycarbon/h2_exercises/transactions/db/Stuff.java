@@ -3,7 +3,7 @@ package name.heavycarbon.h2_exercises.transactions.db;
 import org.jetbrains.annotations.NotNull;
 
 // ---
-// A row from the database
+// Data Transfer Object: A row from the table we use to test transactions.
 // ---
 
 public record Stuff(@NotNull StuffId id, @NotNull EnsembleId ensembleId, @NotNull String payload) {

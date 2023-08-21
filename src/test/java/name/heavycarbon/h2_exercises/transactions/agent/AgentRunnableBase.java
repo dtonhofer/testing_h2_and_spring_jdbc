@@ -17,7 +17,7 @@ import java.util.function.Supplier;
 // NB This is not an autowired Component or a superclass of one
 // So that we can recreate it easily in tests.
 @Slf4j
-public abstract class AgentRunnable implements Runnable {
+public abstract class AgentRunnableBase implements Runnable {
 
     protected final @NotNull Db db;
     public final @NotNull AppState appState;
@@ -47,7 +47,7 @@ public abstract class AgentRunnable implements Runnable {
     // Instead of marking db and appState as "@Autowired",
     // make them final and autowire through the constructor.
 
-    public AgentRunnable(@NotNull Db db, @NotNull AppState appState, @NotNull AgentId agentId, @NotNull Isol isol) {
+    public AgentRunnableBase(@NotNull Db db, @NotNull AppState appState, @NotNull AgentId agentId, @NotNull Isol isol) {
         this.db = db;
         this.appState = appState;
         this.agentId = agentId;
