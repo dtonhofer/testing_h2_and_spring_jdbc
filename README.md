@@ -12,6 +12,12 @@ Some links:
 - [Spring Data JDBC](https://spring.io/projects/spring-data-jdbc)
 - [The H2 database](http://h2database.com/html/main.html)
 
+A must-read is this technical report:
+
+[A Critique of ANSI SQL Isolation Levels](https://arxiv.org/abs/cs/0701157)<br>
+*Hal Berenson, Phil Bernstein, Jim Gray, Jim Melton, Elizabeth O'Neil, Patrick O'Neil*<br>
+*Proc. ACM SIGMOD 95, pp. 1-10, San Jose CA, June 1995*<br>
+*Microsoft Research Technical Report MSR-TR-95-51*<br>
 What we have:
 
 ## Agents and Messages
@@ -52,13 +58,6 @@ The JUnit5 test class to run is
 [`TestStoringInstants`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/storing_instants/TestStoringInstants.java).
 
 ## Trying and testing transactions (still under construction)
-
-A must-read is this technical report:
-
-[A Critique of ANSI SQL Isolation Levels](https://arxiv.org/abs/cs/0701157)<br>
-*Hal Berenson, Phil Bernstein, Jim Gray, Jim Melton, Elizabeth O'Neil, Patrick O'Neil*<br>
-*Proc. ACM SIGMOD 95, pp. 1-10, San Jose CA, June 1995*<br>
-*Microsoft Research Technical Report MSR-TR-95-51*<br>
 
 Transactions are one of the core problems that databases are supposed to handle (except from getting stuff
 on and off the disk with some efficiency), so this is the biggest package. This package also tests 
