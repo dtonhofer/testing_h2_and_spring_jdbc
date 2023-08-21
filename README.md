@@ -51,11 +51,14 @@ Here we are testing that.
 The JUnit5 test class to run is
 [`TestStoringInstants`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/storing_instants/TestStoringInstants.java).
 
-## Trying and testing transactions
+## Trying and testing transactions (still under construction)
 
-*Still under extension!*
+A must-read is this technical report:
 
-Package `name.heavycarbon.h2_exercises.transactions`.
+[A Critique of ANSI SQL Isolation Levels](https://arxiv.org/abs/cs/0701157)<br>
+*Hal Berenson, Phil Bernstein, Jim Gray, Jim Melton, Elizabeth O'Neil, Patrick O'Neil*<br>
+*Proc. ACM SIGMOD 95, pp. 1-10, San Jose CA, June 1995*<br>
+*Microsoft Research Technical Report MSR-TR-95-51*<br>
 
 Transactions are one of the core problems that databases are supposed to handle (except from getting stuff
 on and off the disk with some efficiency), so this is the biggest package. This package also tests 
@@ -72,8 +75,27 @@ The Junit5 test classes to run are:
   reads data set A (defined by some predicate), another transaction T2 changes that set and
   commits, and then transaction T1 re-reads that data set and finds it has changed.
   This unsoundness is supposed to go away at transaction level `REPEATABLE READ` and above, and it does.
-- [`TestElicitingPhantomReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingPhantomReads.java): ...
-- [`TestVariousSequences`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestVariousSequences.java): ...
+- [`TestElicitingPhantomReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingPhantomReads.java):
+  Try to elicit a "phantom read".
+- [`TestVariousSequences`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestVariousSequences.java):
+  Not properly working for now
+- [`TestWritingToSameRowAndCannotGetLock`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestWritingToSameRowAndCannotGetLock):
+  Agent 1 writes to row A, Agent 2 writes to row B, Agent A then writes to row X and doesn't commit. Agent 2 tries to write to the same row X, waits for 2 seconds (by default), then throws an Exception.
+  A number of interesting facts pop up:
+  - Instead of receiving a proper `org.springframework.dao.QueryTimeoutException`, Spring
+    gives us an `org.springframework.transaction.TransactionSystemException` because it cannot translate the 
+    original `org.h2.jdbc.JdbcSQLTimeoutException`. This is probably fixable, but how?
+  - Empirically the lock timeout is 2 seconds even though [the documentation for 'default lcok timeout'](https://www.h2database.com/html/commands.html#set_default_lock_timeout)
+    says it is 1 second. No matter, [`SET DEFAULT_LOCK_TIMEOUT`](https://www.h2database.com/html/commands.html#set_lock_timeout) and
+    `SELECT * FROM INFORMATION_SCHEMA.SETTINGS  WHERE SETTING_NAME = 'DEFAULT_LOCK_TIMEOUT'` can be used to set/get the lock timeout.
+    You can also set it per session with [`SET LOCK TIMEOUT`](https://www.h2database.com/html/commands.html#set_lock_timeout).
+- [`TestWritingToSameRowAndDetectDeadlock`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestWritingToSameRowAndDetectDeadlock.java):
+  Agent 1 writes to row A, Agent 2 writes to row B, Agent 1 then writes to row X *and commits*. Agent 2 tries to write to the same row X. Then:
+  - In isolation levels `REPEATABLE_READ`, `SERIALIZABLE`, `SNAPSHOT`, a `org.springframework.dao.CannotAcquireLockException` with the text
+    `Deadlock detected. The current transaction was rolled back` is raised for Agent 2 immediately and the transaction is rolled back,
+    although one might argue that there is no real problem in this situatoin.
+  - In isolation levels `READ_UNCOMMITTED`, `READ_COMMITTED`, both transactions succeeds and Agent 2, the last one to write, "wins".  
+
 
 ### Isolation Levels matrix
 
