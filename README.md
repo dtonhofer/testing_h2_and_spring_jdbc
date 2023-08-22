@@ -115,15 +115,15 @@ Agent 1 writes to row A, Agent 2 writes to row B, Agent 1 then writes to row X *
 
 I'm not sure why there should be a deadlock in this case.
 
-### Dirty Reads
+### "Dirty Read"
 
 The JUnit5 class is [`TestElicitingDirtyReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDirtyReads.java).
 
-A "dirty read" happens when transaction T2 can read data written by, but not yet committed by, transaction T1. This crass unsoundness is
-supposed to go away at transaction level `READ COMMITTED` and stronger, and it does.
+A "dirty read" happens when transaction T2 can read data written by, but not yet committed by, transaction T1. This unsoundness is
+supposed to not occur at transaction level `READ COMMITTED` and stronger, and it does.
 
-Here are three cases, using a stronger definition of a "dirty read" than the one used by ANSI in the SQL 92 standard. The latter one is 
-is unclear, see *A Critique of ANSI SQL Isolation Levels*.
+Here are three cases, using a stronger definition of a "dirty read" than the one used by ANSI in the SQL 92 standard as the latter is 
+imprecise, see *A Critique of ANSI SQL Isolation Levels*.
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/def_dirty_read.png" width="400" alt="dirty read explained" />
 
@@ -131,19 +131,23 @@ The code is based on two independent agents (thread + runnable) alternatingly ap
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/dirty_read_sequence.png" width="400" alt="dirty read sequence" />
 
-### Non-Repeatable Reads
+### "Non-Repeatable Read" aka. "Fuzzy Read"
 
 The Junit5 class is: [`TestElicitingNonRepeatableReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingNonRepeatableReads.java).
 
-A "non-repeateable read" happens when transaction T1 reads data set A (defined by some predicate), another transaction T2 changes that set and
-commits, and then transaction T1 re-reads that data set and finds it has changed. This unsoundness is supposed to go away at transaction level
+A "non-repeateable read" happens when transaction T1 reads data item D, another transaction T2 changes that that data item and commits, and then transaction T1 re-reads the data item and finds it has changed. This unsoundness is supposed to not occur at transaction level
 `REPEATABLE READ` and stronger, and it does.
+
+Here are three cases, using a stronger definition of a "non-repeatable read" than the one used by ANSI in the SQL 92 standard as the latter is 
+imprecise, see *A Critique of ANSI SQL Isolation Levels*.
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/def_fuzzy_read.png" width="400" alt="fuzzy read explained" />
 
 The code is based on two independent agents (thread + runnable) alternatingly applying their operations:
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/non_repeatable_read_sequence.png" width="400" alt="non-repeatable read sequence" />
 
-### Phantom Reads
+### "Phantom Read"
 
 The code is based on two independent agents (thread + runnable) alternatingly applying their operations:
 
