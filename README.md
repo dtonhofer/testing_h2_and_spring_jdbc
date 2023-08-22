@@ -127,7 +127,7 @@ imprecise, see *A Critique of ANSI SQL Isolation Levels*.
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/def_dirty_read.png" width="400" alt="dirty read explained" />
 
-The code is based on two independent agents (thread + runnable) alternatingly applying their operations:
+The code is based on two independent agents (thread + runnable) alternatingly applying their operations. In the diagram below, we use a "transaction as snapshot" perspective.
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/dirty_read_sequence.png" width="400" alt="dirty read sequence" />
 
@@ -143,7 +143,7 @@ imprecise, see *A Critique of ANSI SQL Isolation Levels*.
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/def_fuzzy_read.png" width="400" alt="fuzzy read explained" />
 
-The code is based on two independent agents (thread + runnable) alternatingly applying their operations:
+The code is based on two independent agents (thread + runnable) alternatingly applying their operations. In the diagram below, we use a "transaction as snapshot" perspective.
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/non_repeatable_read_sequence.png" width="400" alt="non-repeatable read sequence" />
 
