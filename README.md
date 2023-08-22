@@ -115,43 +115,58 @@ Agent 1 writes to row A, Agent 2 writes to row B, Agent 1 then writes to row X *
 
 I'm not sure why there should be a deadlock in this case.
 
-### "Dirty Read"
+### "Dirty Read" (P1)
 
 JUnit5 class: [`TestElicitingDirtyReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDirtyReads.java).
 
-A "dirty read" happens when transaction T2 can read data written by, but not yet committed by, transaction T1. This unsoundness is
-supposed to not occur at transaction level `READ COMMITTED` and stronger, and it does.
+A "dirty read" happens when transaction *T2* can read data written by, but not yet committed by,
+transaction *T1*. This unsoundness is supposed to disappear at transaction level `READ COMMITTED` 
+and stronger, and it does.
 
-Here are three cases, using a stronger definition of a "dirty read" than the one used by ANSI in the SQL 92 standard as the latter is 
-imprecise, see *A Critique of ANSI SQL Isolation Levels*.
+Below are three cases, using a stronger definition of a "dirty read" than the one used by ANSI
+in the SQL 92 standard as the latter is imprecise, see *A Critique of ANSI SQL Isolation Levels*.
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/def_dirty_read.png" width="400" alt="dirty read explained" />
 
-The code is based on two independent agents (thread + runnable) alternatingly applying their operations. In the diagram below, we use a "transaction as snapshot" perspective.
+The code is based on two independent agents (thread + runnable) alternatingly applying their 
+operations. In the diagram below, we use a "transaction as snapshot" perspective.
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/dirty_read_sequence.png" width="400" alt="dirty read sequence" />
 
-### "Non-Repeatable Read" aka. "Fuzzy Read"
+### "Non-Repeatable Read" aka. "Fuzzy Read" (P2)
 
 JUnit5 class: [`TestElicitingNonRepeatableReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingNonRepeatableReads.java).
 
-A "non-repeateable read" happens when transaction T1 reads data item D, another transaction T2 changes that that data item and commits, and then transaction T1 re-reads the data item and finds it has changed. This unsoundness is supposed to not occur at transaction level `REPEATABLE READ` and stronger, and it does.
+A "non-repeateable read" happens when transaction *T1* reads data item *D*, another transaction *T2* changes 
+that that data item and commits, and then transaction *T1* re-reads the data item and finds it has changed. 
+This unsoundness is supposed to disappear at transaction level `REPEATABLE READ` and stronger, and it does.
 
-Here are three cases, using a stronger definition of a "non-repeatable read" than the one used by ANSI in the SQL 92 standard as the latter is 
-imprecise, see *A Critique of ANSI SQL Isolation Levels*.
+Below are three cases, using a stronger definition of a "non-repeatable read" than the one used by 
+ANSI in the SQL 92 standard as the latter is imprecise, see *A Critique of ANSI SQL Isolation Levels*.
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/def_fuzzy_read.png" width="400" alt="fuzzy read explained" />
 
-The code is based on two independent agents (thread + runnable) alternatingly applying their operations. In the diagram below, we use a "transaction as snapshot" perspective.
+The code is based on two independent agents (thread + runnable) alternatingly applying their
+operations. In the diagram below, we use a "transaction as snapshot" perspective.
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/non_repeatable_read_sequence.png" width="400" alt="non-repeatable read sequence" />
 
-### "Phantom Read"
+### "Phantom Read" (P3)
 
 The JUnit5: [`TestElicitingPhantomReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingPhantomReads.java)
 
-A *phantom read" happens when 
-The code is based on two independent agents (thread + runnable) alternatingly applying their operations:
+A "phantom read" happens when transaction *T1* reads a subset of data items *Ds* out a set of data items *Ks*
+using a predicate *P* as selection criterium, then another transation *T2* changes *Ks* so that the set 
+defined by *P* grows or shrinks (maybe to the empty set) and commits, and then transaction *T1* re-reads
+the subset defined by *P* and finds it has changed relative to *Ks*.
+
+Contrary to the "fuzzy read", the "phantom read" is about the extent of a selection predicate, which 
+should not change for the duration of a transaction.
+
+This unsoundness is supposed to disappear at transaction level `SERIALIZABLE`, and it does.
+
+The code is based on two independent agents (thread + runnable) alternatingly applying their
+operations. In the diagram below, we use a "transaction as snapshot" perspective.
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/phantom_read_sequence.png" width="400" alt="phantom read sequence" />
 
