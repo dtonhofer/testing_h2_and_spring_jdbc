@@ -63,6 +63,13 @@ Transactions are one of the core problems that databases are supposed to handle 
 on and off the disk with some efficiency), so this is the biggest package. This package also tests 
 how to use transactions under Spring JDBC.
 
+### Transaction isolation levels
+
+Reading *A Critique of ANSI SQL Isolation Levels*, we find out that ANSI 92 defintions are quite lousy (maybe they are btter in later issues of the SQL standard)
+and that the hierarchy of "isolation level", i.e. the imbricated set of "allowed histories" is rather complex. This graph from the mentioned technical report:
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/history_hierarchy.png" width="400" alt="isolation levels matrix" />
+
 ### Isolation Levels matrix
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/isolation_levels_matrix.png" width="400" alt="isolation levels matrix" />
