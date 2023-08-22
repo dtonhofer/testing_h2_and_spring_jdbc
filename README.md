@@ -117,7 +117,7 @@ I'm not sure why there should be a deadlock in this case.
 
 ### "Dirty Read"
 
-The JUnit5 class is [`TestElicitingDirtyReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDirtyReads.java).
+JUnit5 class: [`TestElicitingDirtyReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDirtyReads.java).
 
 A "dirty read" happens when transaction T2 can read data written by, but not yet committed by, transaction T1. This unsoundness is
 supposed to not occur at transaction level `READ COMMITTED` and stronger, and it does.
@@ -133,10 +133,9 @@ The code is based on two independent agents (thread + runnable) alternatingly ap
 
 ### "Non-Repeatable Read" aka. "Fuzzy Read"
 
-The Junit5 class is: [`TestElicitingNonRepeatableReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingNonRepeatableReads.java).
+JUnit5 class: [`TestElicitingNonRepeatableReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingNonRepeatableReads.java).
 
-A "non-repeateable read" happens when transaction T1 reads data item D, another transaction T2 changes that that data item and commits, and then transaction T1 re-reads the data item and finds it has changed. This unsoundness is supposed to not occur at transaction level
-`REPEATABLE READ` and stronger, and it does.
+A "non-repeateable read" happens when transaction T1 reads data item D, another transaction T2 changes that that data item and commits, and then transaction T1 re-reads the data item and finds it has changed. This unsoundness is supposed to not occur at transaction level `REPEATABLE READ` and stronger, and it does.
 
 Here are three cases, using a stronger definition of a "non-repeatable read" than the one used by ANSI in the SQL 92 standard as the latter is 
 imprecise, see *A Critique of ANSI SQL Isolation Levels*.
@@ -149,11 +148,13 @@ The code is based on two independent agents (thread + runnable) alternatingly ap
 
 ### "Phantom Read"
 
+The JUnit5: [`TestElicitingPhantomReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingPhantomReads.java)
+
+A *phantom read" happens when 
 The code is based on two independent agents (thread + runnable) alternatingly applying their operations:
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/phantom_read_sequence.png" width="400" alt="phantom read sequence" />
 
-The Junit5 class is: [`TestElicitingPhantomReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingPhantomReads.java)
 
 ### Test Various Sequences
 
