@@ -1,6 +1,9 @@
 package name.heavycarbon.h2_exercises.transactions;
 
+import lombok.extern.slf4j.Slf4j;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerBase.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.TransactionResult2;
+import name.heavycarbon.h2_exercises.transactions.common.WhatToReadByEnsemble;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
 import name.heavycarbon.h2_exercises.transactions.db.Stuff;
@@ -10,14 +13,12 @@ import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.Transactio
 import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.Transactional_NonRepeatableRead_Reader;
 import name.heavycarbon.h2_exercises.transactions.session.Isol;
 import name.heavycarbon.h2_exercises.transactions.session.SessionManip;
-import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureJdbc;
 import org.springframework.boot.test.context.SpringBootTest;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerBase.Op;
 
 import java.util.List;
 import java.util.Optional;
@@ -45,23 +46,27 @@ public class TestElicitingNonRepeatableReads {
     @Autowired
     private Transactional_NonRepeatableRead_Reader readerTx;
 
-    private record SetupData(@NotNull List<Stuff> initialRows, @NotNull StuffId modifyThisStuffId) {}
+    private record SetupData(@NotNull List<Stuff> initialRows, @NotNull StuffId modifyThisStuffId) {
+    }
 
-    private @NotNull SetupData setupDb() {
+    // the value of the second column, arbitrary
+
+    private static final EnsembleId theEnsembleId = EnsembleId.Two;
+
+    private @NotNull Stuff setupDbReturnInitialRow() {
         db.setupDatabase(true);
-        db.insert(EnsembleId.Two, "AAA");
-        final List<Stuff> initialRows = db.readEnsemble(EnsembleId.Two);
+        db.insert(theEnsembleId, "AAA");
+        final List<Stuff> initialRows = db.readEnsemble(theEnsembleId);
         assert initialRows.size() == 1;
-        final StuffId modifyThisStuffId = initialRows.get(0).id();
-        return new SetupData(initialRows, modifyThisStuffId);
+        return initialRows.get(0);
     }
 
     private void testNonRepeatableRead(@NotNull Isol isol, @NotNull Op op, @NotNull Expected expected) {
-        final SetupData setupData = setupDb();
-        final List<Stuff> initialRows = setupData.initialRows();
-        final Stuff initialRow = initialRows.get(0);
+        final Stuff initialRow = setupDbReturnInitialRow();
         final var ac = new AgentContainer_NonRepeatableRead(db, inserterTx, readerTx, isol, op);
-        ac.setStuffIdOfRowToModify(setupData.modifyThisStuffId());
+        ac.setWhatToModify(initialRow.id());
+        ac.setWhatToRead(new WhatToReadByEnsemble(theEnsembleId));
+        // Let's run it
         ac.startAll();
         ac.joinAll();
         // None of the threads should have terminated badly!
@@ -71,7 +76,7 @@ public class TestElicitingNonRepeatableReads {
             Assertions.assertThat(optResult).isPresent();
             {
                 final List<Stuff> readResult1 = optResult.get().readResult1();
-                Assertions.assertThat(readResult1).isEqualTo(initialRows);
+                Assertions.assertThat(readResult1).isEqualTo(List.of(initialRow));
             }
             {
                 final List<Stuff> readResult2 = optResult.get().readResult2();
@@ -80,7 +85,7 @@ public class TestElicitingNonRepeatableReads {
                         readResultMustBeWhatTheModifierDid(op, initialRow, readResult2);
                     }
                     case Sound -> {
-                        Assertions.assertThat(readResult2).isEqualTo(initialRows);
+                        Assertions.assertThat(readResult2).isEqualTo(List.of(initialRow));
                     }
                 }
             }

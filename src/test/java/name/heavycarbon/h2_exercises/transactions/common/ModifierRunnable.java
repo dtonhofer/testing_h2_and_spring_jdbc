@@ -25,7 +25,7 @@ public class ModifierRunnable extends AgentRunnableBase {
     // No need to make it "volatile"
 
     @Setter
-    private StuffId rowToModifyId;
+    private StuffId setWhatToModify;
 
     private final TransactionalInterface_OpSwitchOnly modifierTx;
     private final Op op;
@@ -57,13 +57,13 @@ public class ModifierRunnable extends AgentRunnableBase {
         }
     }
 
-    private @NotNull void syncOnAppState() throws InterruptedException {
+    private void syncOnAppState() throws InterruptedException {
         synchronized (appState) {
             log.info("{} in critical section.", agentId);
             while (isContinue()) {
                 switch (appState.get()) {
                     case 1 -> {
-                        modifierTx.runOpSwitchInsideTransaction(this, op, rowToModifyId);
+                        modifierTx.runOpSwitchInsideTransaction(this, op, setWhatToModify);
                         incState();
                         setTerminatedNicely();
                         setStop();

@@ -1,14 +1,14 @@
 package name.heavycarbon.h2_exercises.transactions.agent;
 
-// ---
-// Base class for "containers of agents"
-// ---
-
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
+// ---
+// Base class for "containers of agents"
+// ---
 
 public abstract class AgentContainerBase {
 
@@ -23,10 +23,10 @@ public abstract class AgentContainerBase {
     protected void setUnmodifiableAgentMap(Agent... agents) {
         Map<AgentId, Agent> agentMapTmp = new HashMap<>();
         for (Agent agent : agents) {
-            agentMapTmp.put(agent.agentId(),agent);
-            agent.thread().setDaemon(true);
-            agent.thread().setName(agent.agentId().toString());
-            agent.runnable().setAnyThreadTerminatedBadly(this::isAnyThreadTerminatedBadly);
+            agentMapTmp.put(agent.getAgentId(),agent);
+            agent.getThread().setDaemon(true);
+            agent.getThread().setName(agent.getAgentId().toString());
+            agent.getRunnable().setAnyThreadTerminatedBadly(this::isAnyThreadTerminatedBadly);
         }
         this.agentMap = Collections.unmodifiableMap(agentMapTmp);
     }
@@ -52,19 +52,19 @@ public abstract class AgentContainerBase {
 
     public boolean isAnyThreadTerminatedBadly() {
         return agentMap.values().stream().anyMatch(
-                agent -> !agent.thread().isAlive() && !agent.runnable().isTerminatedNicely());
+                agent -> !agent.getThread().isAlive() && !agent.getRunnable().isTerminatedNicely());
     }
 
     // It makes no sense to synchronize this; the result depends on the momentary thread state.
 
     public boolean isAllThreadsTerminated() {
-        return agentMap.values().stream().noneMatch(agent -> agent.thread().isAlive());
+        return agentMap.values().stream().noneMatch(agent -> agent.getThread().isAlive());
     }
 
     // Called from main thread
 
     public void startAll() {
-        agentMap.values().forEach(agent -> agent.thread().start());
+        agentMap.values().forEach(agent -> agent.getThread().start());
     }
 
     // Called from main thread
@@ -76,7 +76,7 @@ public abstract class AgentContainerBase {
         // a loop so that we can break
         for (Agent agent : agentMap.values()) {
             try {
-                agent.thread().join();
+                agent.getThread().join();
             } catch (InterruptedException ex) {
                 // Who the hell interrupted us? the user??
                 // In any case, do *not* join any remaining threads!

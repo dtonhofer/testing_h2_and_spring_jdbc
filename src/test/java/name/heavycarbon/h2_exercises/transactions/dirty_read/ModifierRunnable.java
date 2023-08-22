@@ -19,7 +19,7 @@ public class ModifierRunnable extends AgentRunnableBase {
     // No need to make it "volatile"
 
     @Setter
-    private StuffId rowToModifyId;
+    private StuffId whatToModify;
 
     private final Transactional_DirtyRead_Modifier modifierTx;
     private final Op op;
@@ -39,7 +39,7 @@ public class ModifierRunnable extends AgentRunnableBase {
     public void run() {
         try {
             // this call is expected to throw MyRollbackException
-            modifierTx.runStateMachineLoopInsideTransaction(this, op, rowToModifyId);
+            modifierTx.runStateMachineLoopInsideTransaction(this, op, whatToModify);
         } catch (Throwable th) {
             AgentRunnableBase.throwableMessage(log, agentId, th);
         }

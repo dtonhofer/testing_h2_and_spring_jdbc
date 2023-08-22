@@ -7,12 +7,12 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Optional;
 
 // ---
-// Implementations of this interface implement the runInsideTransaction()
+// Implementations of this interface implement the runStateMachineLoopInsideTransaction()
 // method and annotate it with "@Transactional"
 // ---
 
 public interface TransactionalInterface_Reader {
 
-    @NotNull Optional<TransactionResult2> runStateMachineLoopInsideTransaction(@NotNull AgentRunnableBase ar);
+    @NotNull Optional<TransactionResult2> runStateMachineLoopInsideTransaction(@NotNull AgentRunnableBase ar, @NotNull WhatToRead whatToRead);
 
 }

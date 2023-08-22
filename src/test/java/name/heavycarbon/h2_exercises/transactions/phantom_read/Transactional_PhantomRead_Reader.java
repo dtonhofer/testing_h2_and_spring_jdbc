@@ -5,6 +5,8 @@ import name.heavycarbon.h2_exercises.transactions.agent.AgentRunnableBase;
 import name.heavycarbon.h2_exercises.transactions.agent.TransactionResult2;
 import name.heavycarbon.h2_exercises.transactions.common.MyTransactional;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalInterface_Reader;
+import name.heavycarbon.h2_exercises.transactions.common.WhatToRead;
+import name.heavycarbon.h2_exercises.transactions.common.WhatToReadByEnsemble;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
 import name.heavycarbon.h2_exercises.transactions.db.Stuff;
@@ -49,8 +51,15 @@ public class Transactional_PhantomRead_Reader implements TransactionalInterface_
     private SessionManip sm;
 
     @Transactional
-    public @NotNull Optional<TransactionResult2> runStateMachineLoopInsideTransaction(@NotNull AgentRunnableBase ar) {
+    public @NotNull Optional<TransactionResult2> runStateMachineLoopInsideTransaction(@NotNull AgentRunnableBase ar, @NotNull WhatToRead whatToRead) {
         log.info("{} inside transaction.", ar.agentId);
+        final EnsembleId readThis;
+        if (whatToRead instanceof WhatToReadByEnsemble) {
+            readThis = ((WhatToReadByEnsemble) whatToRead).getEnsembleId();
+        }
+        else {
+            throw new IllegalArgumentException("Expected WhatToReadByEnsemble instance");
+        }
         sm.setMySessionIsolationLevel(ar.isol);
         List<Stuff> readResult1 = null;
         List<Stuff> readResult2 = null;
@@ -61,11 +70,11 @@ public class Transactional_PhantomRead_Reader implements TransactionalInterface_
                 while (ar.isContinue()) {
                     switch (ar.appState.get()) {
                         case 0 -> {
-                            readResult1 = db.readEnsemble(EnsembleId.Two);
+                            readResult1 = db.readEnsemble(readThis);
                             ar.incState();
                         }
                         case 2 -> {
-                            readResult2 = db.readEnsemble(EnsembleId.Two);
+                            readResult2 = db.readEnsemble(readThis);
                             ar.setTerminatedNicely();
                             ar.setStop();
                         }
@@ -80,6 +89,8 @@ public class Transactional_PhantomRead_Reader implements TransactionalInterface_
             interrupted = true;
         }
         log.info(ar.finalMessage(interrupted));
+        assert readResult1 != null;
+        assert readResult2 != null;
         return TransactionResult2.makeOptional(readResult1, readResult2);
     }
 

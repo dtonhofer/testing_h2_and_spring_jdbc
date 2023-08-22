@@ -24,19 +24,16 @@ public class AgentContainer_PhantomRead extends AgentContainerBase {
             @NotNull Op op) {
         final var modifierRunnable = new ModifierRunnable(db, appState, modifierId, isol, modifierTx, op);
         final var readerRunnable = new ReaderRunnable(db, appState, readerId, isol, readerTx);
-        setUnmodifiableAgentMap(
-                new Agent(modifierId, new Thread(modifierRunnable), modifierRunnable),
-                new Agent(readerId, new Thread(readerRunnable), readerRunnable)
-        );
+        setUnmodifiableAgentMap(new Agent(modifierRunnable),new Agent(readerRunnable));
 
     }
 
     public @NotNull ReaderRunnable getReaderRunnable() {
-        return (ReaderRunnable) (get(readerId).runnable());
+        return (ReaderRunnable) (get(readerId).getRunnable());
     }
 
     public @NotNull ModifierRunnable getModifierRunnable() {
-        return (ModifierRunnable) (get(modifierId).runnable());
+        return (ModifierRunnable) (get(modifierId).getRunnable());
     }
 
     // This is called by main at the very end to get the result of reading
@@ -51,7 +48,7 @@ public class AgentContainer_PhantomRead extends AgentContainerBase {
     // thread is started.
 
     public void setStuffIdOfRowToModify(@NotNull StuffId stuffId) {
-        getModifierRunnable().setRowToModifyId(stuffId);
+        getModifierRunnable().setSetWhatToModify(stuffId);
     }
 
 }

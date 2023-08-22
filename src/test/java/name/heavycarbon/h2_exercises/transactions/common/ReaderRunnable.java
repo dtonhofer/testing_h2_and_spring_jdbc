@@ -1,5 +1,6 @@
 package name.heavycarbon.h2_exercises.transactions.common;
 
+import lombok.Setter;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentRunnableBase;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
@@ -26,6 +27,15 @@ public class ReaderRunnable extends AgentRunnableBase {
     @Getter
     private Optional<TransactionResult2> result = Optional.empty();
 
+    // "whatToRead" is set by main once known.
+    // Set actually before the modifier thread is started.
+    // No need to make it "volatile"
+
+    @Setter
+    private WhatToRead whatToRead;
+
+    // ---
+
     public ReaderRunnable(@NotNull Db db,
                           @NotNull AppState appState,
                           @NotNull AgentId agentId,
@@ -35,10 +45,12 @@ public class ReaderRunnable extends AgentRunnableBase {
         this.readerTx = readerTx;
     }
 
+    // ---
+
     @Override
     public void run() {
         try {
-            result = readerTx.runStateMachineLoopInsideTransaction(this);
+            result = readerTx.runStateMachineLoopInsideTransaction(this, whatToRead);
         } catch (Throwable th) {
             AgentRunnableBase.throwableMessage(log, agentId, th);
         }

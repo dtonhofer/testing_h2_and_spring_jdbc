@@ -5,6 +5,8 @@ import name.heavycarbon.h2_exercises.transactions.agent.AgentRunnableBase;
 import name.heavycarbon.h2_exercises.transactions.agent.TransactionResult2;
 import name.heavycarbon.h2_exercises.transactions.common.MyTransactional;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalInterface_Reader;
+import name.heavycarbon.h2_exercises.transactions.common.WhatToRead;
+import name.heavycarbon.h2_exercises.transactions.common.WhatToReadByEnsemble;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
 import name.heavycarbon.h2_exercises.transactions.db.Stuff;
@@ -50,32 +52,39 @@ public class Transactional_NonRepeatableRead_Reader implements TransactionalInte
     private SessionManip sm;
 
     @Transactional
-    public @NotNull Optional<TransactionResult2> runStateMachineLoopInsideTransaction(@NotNull AgentRunnableBase ar) {
-        log.info("{} inside transaction", ar.agentId);
+    public @NotNull Optional<TransactionResult2> runStateMachineLoopInsideTransaction(@NotNull AgentRunnableBase ar, @NotNull WhatToRead whatToRead) {
+        log.info("{} in transaction.", ar.agentId);
         sm.setMySessionIsolationLevel(ar.isol);
-        return syncOnAppState(ar);
+        return syncOnAppState(ar,whatToRead);
     }
 
-    private @NotNull Optional<TransactionResult2> syncOnAppState(@NotNull AgentRunnableBase ar) {
+    private @NotNull Optional<TransactionResult2> syncOnAppState(@NotNull AgentRunnableBase ar, @NotNull WhatToRead whatToRead) {
         synchronized (ar.appState) {
             log.info("{} in critical section.", ar.agentId);
-            return runStateMachineLoop(ar);
+            return runStateMachineLoop(ar, whatToRead);
         }
     }
 
-    private @NotNull Optional<TransactionResult2> runStateMachineLoop(@NotNull AgentRunnableBase ar) {
+    private @NotNull Optional<TransactionResult2> runStateMachineLoop(@NotNull AgentRunnableBase ar, @NotNull WhatToRead whatToRead) {
         List<Stuff> readResult1 = null;
         List<Stuff> readResult2 = null;
+        final EnsembleId readThis;
+        if (whatToRead instanceof WhatToReadByEnsemble) {
+            readThis = ((WhatToReadByEnsemble) whatToRead).getEnsembleId();
+        }
+        else {
+            throw new IllegalArgumentException("Expected WhatToReadByEnsemble instance");
+        }
         boolean interrupted = false; // set when the thread notices it has been interrupted
         try {
             while (ar.isContinue()) {
                 switch (ar.appState.get()) {
                     case 0 -> {
-                        readResult1 = db.readEnsemble(EnsembleId.Two);
+                        readResult1 = db.readEnsemble(readThis);
                         ar.incState();
                     }
                     case 2 -> {
-                        readResult2 = db.readEnsemble(EnsembleId.Two);
+                        readResult2 = db.readEnsemble(readThis);
                         ar.setTerminatedNicely();
                         ar.setStop();
                     }
@@ -89,6 +98,8 @@ public class Transactional_NonRepeatableRead_Reader implements TransactionalInte
             interrupted = true;
         }
         log.info(ar.finalMessage(interrupted));
+        assert readResult1 != null;
+        assert readResult2 != null;
         return TransactionResult2.makeOptional(readResult1, readResult2);
     }
 

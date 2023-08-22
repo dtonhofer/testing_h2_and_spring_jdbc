@@ -18,18 +18,10 @@ public class AgentContainer_WSRCGL extends AgentContainerBase {
     private final @NotNull AgentRunnable_WSR writeFirstRunnable;
     private final @NotNull AgentRunnable_WSR writeLastRunnable;
 
-    public AgentContainer_WSRCGL(
-            @NotNull Db db,
-            @NotNull Isol isol,
-            @NotNull StuffIds ids,
-            @NotNull Transactional_WSR_WriteFirst writeFirstTx,
-            @NotNull Transactional_WSR_WriteLast writeLastTx) {
+    public AgentContainer_WSRCGL(@NotNull Db db, @NotNull Isol isol, @NotNull StuffIds ids, @NotNull Transactional_WSR_WriteFirst writeFirstTx, @NotNull Transactional_WSR_WriteLast writeLastTx) {
         writeFirstRunnable = new AgentRunnable_WSR(db, ids.writeFirstMarkId(), ids.collisionId(), appState, writeFirstAgentId, isol, writeFirstTx);
         writeLastRunnable = new AgentRunnable_WSR(db, ids.writeLastMarkId(), ids.collisionId(), appState, writeLastAgentId, isol, writeLastTx);
-        setUnmodifiableAgentMap(
-                new Agent(writeFirstAgentId, new Thread(writeFirstRunnable), writeFirstRunnable),
-                new Agent(writeLastAgentId, new Thread(writeLastRunnable), writeLastRunnable)
-        );
+        setUnmodifiableAgentMap(new Agent(writeFirstRunnable), new Agent(writeLastRunnable));
     }
 
     public @NotNull AgentRunnable_WSR getWriteFirstRunnable() {

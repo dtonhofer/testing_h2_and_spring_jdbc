@@ -7,8 +7,8 @@ import name.heavycarbon.h2_exercises.transactions.agent.AppState;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.session.Isol;
 import name.heavycarbon.h2_exercises.transactions.write_same_row.AgentRunnable_WSR;
-import name.heavycarbon.h2_exercises.transactions.write_same_row_cannot_get_lock.Transactional_WSR_WriteLast;
 import name.heavycarbon.h2_exercises.transactions.write_same_row.StuffIds;
+import name.heavycarbon.h2_exercises.transactions.write_same_row_cannot_get_lock.Transactional_WSR_WriteLast;
 import org.jetbrains.annotations.NotNull;
 
 public class AgentContainer_WSRDD extends AgentContainerBase {
@@ -27,10 +27,7 @@ public class AgentContainer_WSRDD extends AgentContainerBase {
             @NotNull Transactional_WSR_WriteLast writeLastTx) {
         writeFirstRunnable = new AgentRunnable_WSRDD(db, ids.writeFirstMarkId(), ids.collisionId(), appState, writeFirstAgentId, isol, writeFirstTx);
         writeLastRunnable = new AgentRunnable_WSR(db, ids.writeLastMarkId(), ids.collisionId(), appState, writeLastAgentId, isol, writeLastTx);
-        setUnmodifiableAgentMap(
-                new Agent(writeFirstAgentId, new Thread(writeFirstRunnable), writeFirstRunnable),
-                new Agent(writeLastAgentId, new Thread(writeLastRunnable), writeLastRunnable)
-        );
+        setUnmodifiableAgentMap(new Agent(writeFirstRunnable), new Agent(writeLastRunnable));
     }
 
     public @NotNull AgentRunnable_WSRDD getWriteFirstRunnable() {

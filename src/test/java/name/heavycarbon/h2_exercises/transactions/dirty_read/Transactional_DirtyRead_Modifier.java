@@ -48,20 +48,20 @@ public class Transactional_DirtyRead_Modifier implements MyTransactional {
     private SessionManip sm;
 
     @Transactional(rollbackFor = {MyRollbackException.class})
-    public void runStateMachineLoopInsideTransaction(@NotNull AgentRunnableBase ar, @NotNull Op op, @NotNull StuffId rowToModifyId) throws MyRollbackException {
+    public void runStateMachineLoopInsideTransaction(@NotNull AgentRunnableBase ar, @NotNull Op op, @NotNull StuffId whatToModify) throws MyRollbackException {
         log.info("{} in transaction.", ar.agentId);
         sm.setMySessionIsolationLevel(ar.isol);
-        syncOnAppState(ar, op, rowToModifyId);
+        syncOnAppState(ar, op, whatToModify);
     }
 
-    private void syncOnAppState(@NotNull AgentRunnableBase ar, @NotNull Op op, @NotNull StuffId rowToModifyId) throws MyRollbackException {
+    private void syncOnAppState(@NotNull AgentRunnableBase ar, @NotNull Op op, @NotNull StuffId whatToModify) throws MyRollbackException {
         synchronized (ar.appState) {
             log.info("{} in critical section.", ar.agentId);
-            runStateMachineLoop(ar, op, rowToModifyId);
+            runStateMachineLoop(ar, op, whatToModify);
         }
     }
 
-    private void runStateMachineLoop(@NotNull AgentRunnableBase ar, @NotNull Op op, @NotNull StuffId rowToModifyId) throws MyRollbackException {
+    private void runStateMachineLoop(@NotNull AgentRunnableBase ar, @NotNull Op op, @NotNull StuffId whatToModify) throws MyRollbackException {
         boolean interrupted = false; // set when the thread notices it has been interrupted
         try { // to catch InterruptedException
             while (ar.isContinue()) {
@@ -72,10 +72,10 @@ public class Transactional_DirtyRead_Modifier implements MyTransactional {
                                 db.insert(EnsembleId.Two, "BBB");
                             }
                             case Update -> {
-                                db.updateById(rowToModifyId, "XXX");
+                                db.updateById(whatToModify, "XXX");
                             }
                             case Delete -> {
-                                int count = db.deleteById(rowToModifyId);
+                                int count = db.deleteById(whatToModify);
                                 Assertions.assertEquals(count, 1);
                             }
                         }
