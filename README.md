@@ -12,7 +12,7 @@ Some links:
 - [Spring Data JDBC](https://spring.io/projects/spring-data-jdbc)
 - [The H2 database](http://h2database.com/html/main.html)
 
-A must-read is this technical report:
+A must-read is this technical report, even though it could use a review:
 
 [A Critique of ANSI SQL Isolation Levels](https://arxiv.org/abs/cs/0701157)<br>
 *Hal Berenson, Phil Bernstein, Jim Gray, Jim Melton, Elizabeth O'Neil, Patrick O'Neil*<br>
@@ -63,54 +63,98 @@ Transactions are one of the core problems that databases are supposed to handle 
 on and off the disk with some efficiency), so this is the biggest package. This package also tests 
 how to use transactions under Spring JDBC.
 
-The Junit5 test classes to run are:
-
-- [`TestElicitingDirtyReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDirtyReads.java):
-  Try to elicit a "dirty read" whereby transaction T1
-  reads data written but not yet committed by transaction T2. This crass unsoundness is
-  supposed to go away at transaction level `READ COMMITTED` and above, and it does.
-- [`TestElicitingNonRepeatableReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingNonRepeatableReads.java):
-  Try to elicit a "non-repeateable read" whereby transaction T1
-  reads data set A (defined by some predicate), another transaction T2 changes that set and
-  commits, and then transaction T1 re-reads that data set and finds it has changed.
-  This unsoundness is supposed to go away at transaction level `REPEATABLE READ` and above, and it does.
-- [`TestElicitingPhantomReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingPhantomReads.java):
-  Try to elicit a "phantom read".
-- [`TestVariousSequences`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestVariousSequences.java):
-  Not properly working for now
-- [`TestWritingToSameRowAndCannotGetLock`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestWritingToSameRowAndCannotGetLock):
-  Agent 1 writes to row A, Agent 2 writes to row B, Agent A then writes to row X and doesn't commit. Agent 2 tries to write to the same row X, waits for 2 seconds (by default), then throws an Exception.
-  A number of interesting facts pop up:
-  - Instead of receiving a proper `org.springframework.dao.QueryTimeoutException`, Spring
-    gives us an `org.springframework.transaction.TransactionSystemException` because it cannot translate the 
-    original `org.h2.jdbc.JdbcSQLTimeoutException`. This is probably fixable, but how?
-  - Empirically the lock timeout is 2 seconds even though [the documentation for 'default lcok timeout'](https://www.h2database.com/html/commands.html#set_default_lock_timeout)
-    says it is 1 second. No matter, [`SET DEFAULT_LOCK_TIMEOUT`](https://www.h2database.com/html/commands.html#set_lock_timeout) and
-    `SELECT * FROM INFORMATION_SCHEMA.SETTINGS  WHERE SETTING_NAME = 'DEFAULT_LOCK_TIMEOUT'` can be used to set/get the lock timeout.
-    You can also set it per session with [`SET LOCK TIMEOUT`](https://www.h2database.com/html/commands.html#set_lock_timeout).
-- [`TestWritingToSameRowAndDetectDeadlock`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestWritingToSameRowAndDetectDeadlock.java):
-  Agent 1 writes to row A, Agent 2 writes to row B, Agent 1 then writes to row X *and commits*. Agent 2 tries to write to the same row X. Then:
-  - In isolation levels `REPEATABLE_READ`, `SERIALIZABLE`, `SNAPSHOT`, a `org.springframework.dao.CannotAcquireLockException` with the text
-    `Deadlock detected. The current transaction was rolled back` is raised for Agent 2 immediately and the transaction is rolled back,
-    although one might argue that there is no real problem in this situatoin.
-  - In isolation levels `READ_UNCOMMITTED`, `READ_COMMITTED`, both transactions succeeds and Agent 2, the last one to write, "wins".  
-
-
 ### Isolation Levels matrix
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/isolation_levels_matrix.png" width="400" alt="isolation levels matrix" />
 
-### Dirty Read sequence
+### Accompanying graphs
+
+The key to the graphs:
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/def_key.png" width="400" alt="dirty read explained" />
+
+### Dirty Write (?)
+
+What happens when we two transactions write to the same row?
+
+We can get a timeout, or a deadlock. Interesting.
+
+#### Getting Timeout
+
+[`TestWritingToSameRowAndCannotGetLock`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestWritingToSameRowAndCannotGetLock)
+
+Agent 1 writes to row A, Agent 2 writes to row B, Agent A then writes to row X and doesn't commit. Agent 2 tries to write to the same row X, waits for 2 seconds (by default), then throws an Exception.
+
+A number of interesting facts pop up:
+
+- Instead of receiving a proper `org.springframework.dao.QueryTimeoutException`, Spring
+  gives us an `org.springframework.transaction.TransactionSystemException` because it cannot translate the 
+  original `org.h2.jdbc.JdbcSQLTimeoutException`. This is probably fixable, but how?
+- Empirically the lock timeout is 2 seconds even though [the documentation for 'default lcok timeout'](https://www.h2database.com/html/commands.html#set_default_lock_timeout)
+  says it is 1 second. No matter, [`SET DEFAULT_LOCK_TIMEOUT`](https://www.h2database.com/html/commands.html#set_lock_timeout) and
+  `SELECT * FROM INFORMATION_SCHEMA.SETTINGS  WHERE SETTING_NAME = 'DEFAULT_LOCK_TIMEOUT'` can be used to set/get the lock timeout.
+  You can also set it per session with [`SET LOCK TIMEOUT`](https://www.h2database.com/html/commands.html#set_lock_timeout).
+
+**Getting Deadlock**
+
+[`TestWritingToSameRowAndDetectDeadlock`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestWritingToSameRowAndDetectDeadlock.java)
+
+Agent 1 writes to row A, Agent 2 writes to row B, Agent 1 then writes to row X *and commits*. Agent 2 tries to write to the same row X. Then:
+
+- In isolation levels `REPEATABLE_READ`, `SERIALIZABLE`, `SNAPSHOT`, a `org.springframework.dao.CannotAcquireLockException` with the text
+  `Deadlock detected. The current transaction was rolled back` is raised for Agent 2 immediately and the transaction is rolled back,
+  although one might argue that there is no real problem in this situation.
+- In isolation levels `READ_UNCOMMITTED`, `READ_COMMITTED`, both transactions succeeds and Agent 2, the last one to write, "wins".
+
+I'm not sure why there should be a deadlock in this case.
+
+### Dirty Reads
+
+The JUnit5 class is [`TestElicitingDirtyReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDirtyReads.java).
+
+A "dirty read" happens when transaction T2 can read data written by, but not yet committed by, transaction T1. This crass unsoundness is
+supposed to go away at transaction level `READ COMMITTED` and stronger, and it does.
+
+Here are three cases, using a stronger definition of a "dirty read" than the one used by ANSI in the SQL 92 standard. The latter one is 
+is unclear, see *A Critique of ANSI SQL Isolation Levels*.
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/def_dirty_read.png" width="400" alt="dirty read explained" />
+
+The code is based on two independent agents (thread + runnable) alternatingly applying their operations:
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/dirty_read_sequence.png" width="400" alt="dirty read sequence" />
 
-### Non-Repeatable Read sequence
+### Non-Repeatable Reads
+
+The Junit5 class is: [`TestElicitingNonRepeatableReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingNonRepeatableReads.java).
+
+A "non-repeateable read" happens when transaction T1 reads data set A (defined by some predicate), another transaction T2 changes that set and
+commits, and then transaction T1 re-reads that data set and finds it has changed. This unsoundness is supposed to go away at transaction level
+`REPEATABLE READ` and stronger, and it does.
+
+The code is based on two independent agents (thread + runnable) alternatingly applying their operations:
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/non_repeatable_read_sequence.png" width="400" alt="non-repeatable read sequence" />
 
-### Phantom Read sequence
+### Phantom Reads
+
+The code is based on two independent agents (thread + runnable) alternatingly applying their operations:
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/phantom_read_sequence.png" width="400" alt="phantom read sequence" />
+
+The Junit5 class is: [`TestElicitingPhantomReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingPhantomReads.java)
+
+### Test Various Sequences
+
+Not properly working for now
+    
+The Junit5 class is: [`TestVariousSequences`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestVariousSequences.java):
+
+
+
+
+
+
 
 
 
