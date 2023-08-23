@@ -119,7 +119,7 @@ I'm not sure why there should be a deadlock in this case.
 
 JUnit5 class: [`TestElicitingDirtyReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDirtyReads.java).
 
-A "dirty read" happens when transaction *T2* can read data written by, but not yet committed by,
+A "dirty read" happens when transaction *T2* can read data written by, **but not yet committed by**,
 transaction *T1*. This unsoundness is supposed to disappear at transaction level `READ COMMITTED` 
 and stronger, and it does.
 
@@ -138,8 +138,11 @@ operations. In the diagram below, we use a "transaction as snapshot" perspective
 JUnit5 class: [`TestElicitingNonRepeatableReads`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingNonRepeatableReads.java).
 
 A "non-repeateable read" happens when transaction *T1* reads data item *D*, another transaction *T2* changes 
-that that data item and commits, and then transaction *T1* re-reads the data item and finds it has changed. 
+that that data item **and commits**, and then transaction *T1* re-reads the data item and finds it has changed.
 This unsoundness is supposed to disappear at transaction level `REPEATABLE READ` and stronger, and it does.
+
+The `UPDATE` case is straightforward, but the `INSERT` and `DELETE cases are properly "phantom reads" whereby
+the result set changes unexpectedly.
 
 Below are three cases, using a stronger definition of a "non-repeatable read" than the one used by 
 ANSI in the SQL 92 standard as the latter is imprecise, see *A Critique of ANSI SQL Isolation Levels*.
