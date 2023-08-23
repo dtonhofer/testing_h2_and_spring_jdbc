@@ -5,7 +5,7 @@ behaviour of transactions.
 
 You know the drill! 
 
-<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/trying_stuff_until_it_works.png" alt="Trying stuff until it works" />
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/trying_stuff_until_it_works.png" alt="Trying stuff until it works" width="300" />
 
 Some links:
 
