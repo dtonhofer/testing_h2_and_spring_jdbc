@@ -144,6 +144,8 @@ This unsoundness is supposed to disappear at transaction level `REPEATABLE READ`
 Below are three cases, using a stronger definition of a "non-repeatable read" than the one used by 
 ANSI in the SQL 92 standard as the latter is imprecise, see *A Critique of ANSI SQL Isolation Levels*.
 
+However, the cases INSERT and DELETE are actually "phantom read" scenarios, so will not be coded.
+
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/def_fuzzy_read.png" width="400" alt="fuzzy read explained" />
 
 The code is based on two independent agents (thread + runnable) alternatingly applying their
