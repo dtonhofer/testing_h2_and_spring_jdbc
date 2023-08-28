@@ -140,8 +140,7 @@ public class Db {
                 + " WHERE "
                 + field_ensemble + " = ? "
                 + " ORDER BY "
-                + field_id
-                + " ASC";
+                + field_id;
         return jdbcTemplate.query(sql, Db::rowMapper_stuff, ensembleId.getRaw());
     }
 
@@ -153,8 +152,7 @@ public class Db {
                 + " FROM "
                 + fqTableName_stuff
                 + " ORDER BY "
-                + field_id
-                + " ASC";
+                + field_id;
         return jdbcTemplate.query(sql, Db::rowMapper_stuff);
     }
 
@@ -178,8 +176,7 @@ public class Db {
                 + " WHERE "
                 + field_payload + " LIKE CONCAT('%',?) ESCAPE '!' " // Does selecting the escape character like this work?
                 + " ORDER BY "
-                + field_id
-                + " ASC";
+                + field_id;
         return jdbcTemplate.query(sql, Db::rowMapper_stuff, escapeSearchString(suffix));
     }
 
@@ -195,8 +192,7 @@ public class Db {
                 + " AND "
                 + field_ensemble + " = ? "
                 + " ORDER BY "
-                + field_id
-                + " ASC";
+                + field_id;
         return jdbcTemplate.query(sql, Db::rowMapper_stuff, escapeSearchString(suffix), ensembleId.getRaw());
     }
 
