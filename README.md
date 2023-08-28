@@ -20,7 +20,7 @@ A must-read is this technical report, even though it could use a review:
 *Microsoft Research Technical Report MSR-TR-95-51*<br>
 What we have:
 
-## Agents and Messages
+## Exercise 1: "Agents and Messages"
 
 Package `name.heavycarbon.h2_exercises.agents_and_msgs`.
 
@@ -43,7 +43,7 @@ messages are not picked up again during the next poll.
 The JUnit5 test class to run is
 [`TestAgentsExchangingMsgs`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/agents_and_msgs/TestAgentsExchangingMsgs.java).
 
-## Storing java.time.Instant
+## Exercise 2: "Storing java.time.Instant"
 
 Package `name.heavycarbon.h2_exercises.storing_instants`.
 
@@ -57,7 +57,7 @@ Here we are testing that.
 The JUnit5 test class to run is
 [`TestStoringInstants`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/storing_instants/TestStoringInstants.java).
 
-## Trying and testing transactions (still under construction)
+## Exercise 3: "Testing transactions"
 
 Transactions are one of the core problems that databases are supposed to handle (except from getting stuff
 on and off the disk with some efficiency), so this is the biggest package. This package also tests 
@@ -174,13 +174,6 @@ The code is based on two independent agents (thread + runnable) alternatingly ap
 operations. In the diagram below, we use a "transaction as snapshot" perspective.
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/phantom_read_sequence.png" width="400" alt="phantom read sequence" />
-
-
-### Test Various Sequences
-
-Not properly working for now
-    
-The Junit5 class is: [`TestVariousSequences`](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestVariousSequences.java):
 
 
 
