@@ -1,4 +1,4 @@
-package name.heavycarbon.h2_exercises.transactions.session;
+package name.heavycarbon.h2_exercises.transactions.db;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -48,7 +48,7 @@ public class SessionManip {
     public @NotNull List<SessionInfoExt> getAllSessionsInfo() {
         final String sql = "SELECT session_id, isolation_level, session_id = SESSION_ID() AS is_my_session "
                 + " FROM information_schema.sessions "
-                + " ORDER BY session_id ASC";
+                + " ORDER BY session_id";
         return
                 jdbcTemplate.query(sql,
                         (@NotNull ResultSet row, int rowNum) -> {
@@ -65,7 +65,7 @@ public class SessionManip {
     // ---
 
     public void setMySessionIsolationLevel(@NotNull Isol level) {
-        jdbcTemplate.execute("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL " + level.toSql(level));
+        jdbcTemplate.execute("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL " + Isol.toSql(level));
     }
 
 }

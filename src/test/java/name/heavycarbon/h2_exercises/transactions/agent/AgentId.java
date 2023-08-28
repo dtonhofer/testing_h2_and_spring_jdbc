@@ -12,7 +12,7 @@ public final class AgentId implements Comparable<AgentId> {
 
     public AgentId(@NotNull String id) {
         this.id = id.trim();
-        assert !this.id.equals("");
+        assert !this.id.isEmpty();
     }
 
     @Override
@@ -29,7 +29,7 @@ public final class AgentId implements Comparable<AgentId> {
 
     @Override
     public String toString() {
-        return "AgentId-" + id;
+        return "agent:" + id;
     }
 
     public String getRaw() {

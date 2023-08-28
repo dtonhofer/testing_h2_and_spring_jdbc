@@ -12,10 +12,10 @@ public class Agent {
 
     @NotNull AgentId agentId;
     @NotNull Thread thread;
-    @NotNull AgentRunnableBase runnable;
+    @NotNull AgentRunnableAbstract runnable;
 
-    public Agent(@NotNull AgentRunnableBase runnable) {
-        this.agentId = runnable.agentId;
+    public Agent(@NotNull AgentRunnableAbstract runnable) {
+        this.agentId = runnable.getAgentId();
         this.thread = new Thread(runnable);
         this.runnable = runnable;
     }

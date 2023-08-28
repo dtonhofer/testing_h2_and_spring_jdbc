@@ -57,7 +57,7 @@ public class Db {
 
     // ---
 
-    private void createTable() {
+    private void createTableWithAutoincrementId() {
         final String sqlRaw = "CREATE TABLE IF NOT EXISTS "
                 + fqTableName_stuff
                 + " ("
@@ -69,16 +69,37 @@ public class Db {
     }
 
     // ---
+
+    private void createTable() {
+        final String sqlRaw = "CREATE TABLE IF NOT EXISTS "
+                + fqTableName_stuff
+                + " ("
+                + field_id + " INTEGER PRIMARY KEY, "
+                + field_ensemble + " INTEGER NOT NULL, "
+                + field_payload + " VARCHAR(50) NOT NULL "
+                + " )";
+        jdbcTemplate.execute(sqlRaw);
+    }
+
+    // ---
     // "cleanup" indicates whether the tables and the schema should be dropped
     // before recreating them.
     // ---
 
-    public void setupDatabase(boolean cleanupFirst) {
-        if (cleanupFirst) {
+    public enum AutoIncrementing {Yes, No}
+
+    public enum CleanupFirst {Yes, No}
+
+    public void setupDatabase(@NotNull AutoIncrementing autoIncrementing, @NotNull CleanupFirst cleanupFirst) {
+        if (cleanupFirst == CleanupFirst.Yes) {
             DbHelpers.dropSchema(schemaName, true, jdbcTemplate);
         }
         DbHelpers.createSchema(schemaName, jdbcTemplate);
-        createTable();
+        if (autoIncrementing == AutoIncrementing.Yes) {
+            createTableWithAutoincrementId();
+        } else {
+            createTable();
+        }
     }
 
     // ---
@@ -109,7 +130,7 @@ public class Db {
         }
     }
 
-    public @NotNull List<Stuff> readEnsemble(@NotNull EnsembleId ensembleId) {
+    public @NotNull List<Stuff> readByEnsemble(@NotNull EnsembleId ensembleId) {
         final String sql = "SELECT "
                 + field_id + ","
                 + field_ensemble + ","
@@ -124,7 +145,62 @@ public class Db {
         return jdbcTemplate.query(sql, Db::rowMapper_stuff, ensembleId.getRaw());
     }
 
-    // Note: The "insert" works perfectly well if the columns don't exist
+    public @NotNull List<Stuff> readAll() {
+        final String sql = "SELECT "
+                + field_id + ","
+                + field_ensemble + ","
+                + field_payload
+                + " FROM "
+                + fqTableName_stuff
+                + " ORDER BY "
+                + field_id
+                + " ASC";
+        return jdbcTemplate.query(sql, Db::rowMapper_stuff);
+    }
+
+    // See https://stackoverflow.com/questions/8247970/using-like-wildcard-in-prepared-statement
+    // http://h2database.com/html/grammar.html?highlight=escape&search=ESCAPE#like_predicate_right_hand_side
+
+    private static String escapeSearchString(String searchString) {
+        // The escape character is chosen to be "!"
+        return searchString.replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
+    }
+
+    public @NotNull List<Stuff> readByPayloadSuffix(@NotNull String suffix) {
+        final String sql = "SELECT "
+                + field_id + ","
+                + field_ensemble + ","
+                + field_payload
+                + " FROM "
+                + fqTableName_stuff
+                + " WHERE "
+                + field_payload + " LIKE CONCAT('%',?) ESCAPE '!' " // Does selecting the escape character like this work?
+                + " ORDER BY "
+                + field_id
+                + " ASC";
+        return jdbcTemplate.query(sql, Db::rowMapper_stuff, escapeSearchString(suffix));
+    }
+
+    public @NotNull List<Stuff> readByEnsembleAndPayloadSuffix(@NotNull EnsembleId ensembleId, @NotNull String suffix) {
+        final String sql = "SELECT "
+                + field_id + ","
+                + field_ensemble + ","
+                + field_payload
+                + " FROM "
+                + fqTableName_stuff
+                + " WHERE "
+                + field_payload + " LIKE CONCAT('%',?) ESCAPE '!' "
+                + " AND "
+                + field_ensemble + " = ? "
+                + " ORDER BY "
+                + field_id
+                + " ASC";
+        return jdbcTemplate.query(sql, Db::rowMapper_stuff, escapeSearchString(suffix), ensembleId.getRaw());
+    }
+
+    // Make a map for inserting a row into the table with the auto incrementing id
 
     static Map<String, Object> makeMapForRow(@NotNull EnsembleId ensembleId, @NotNull String payload) {
         final Map<String, Object> res = new HashMap<>();
@@ -133,15 +209,10 @@ public class Db {
         return res;
     }
 
-    static Map<String, Object> makeMapForRow(@NotNull StuffId stuffId, @NotNull EnsembleId ensembleId, @NotNull String payload) {
-        final Map<String, Object> res = new HashMap<>();
-        res.put(field_id, stuffId.getRaw());
-        res.put(field_ensemble, ensembleId.getRaw());
-        res.put(field_payload, payload);
-        return res;
-    }
+    // Insert a row into the table with the auto incrementing id, return the new id.
 
     public StuffId insert(@NotNull EnsembleId ensembleId, @NotNull String payload) {
+        // Not sure whether I need to additionally specify usingColumns() ???
         final Number num = new SimpleJdbcInsert(jdbcTemplate)
                 .withSchemaName(schemaName)
                 .withTableName(tableName_stuff)
@@ -150,16 +221,32 @@ public class Db {
         return new StuffId(num.intValue());
     }
 
-    public void insertDontReturnId(@NotNull EnsembleId ensembleId, @NotNull String payload) {
-        new SimpleJdbcInsert(jdbcTemplate)
-                .withSchemaName(schemaName)
-                .withTableName(tableName_stuff)
-                .usingColumns(field_ensemble, field_payload)
-                .execute(makeMapForRow(ensembleId, payload));
+    // Make a map for inserting a row into the table without the auto incrementing id
+
+    static Map<String, Object> makeMapForRow(@NotNull Stuff stuff) {
+        final Map<String, Object> res = new HashMap<>();
+        res.put(field_id, stuff.getId().getRaw());
+        res.put(field_ensemble, stuff.getEnsembleId().getRaw());
+        res.put(field_payload, stuff.getPayload());
+        return res;
     }
 
-    public int updateById(@NotNull StuffId stuffId, @NotNull String payload) {
-        return jdbcTemplate.update("UPDATE "
+    // Insert a row into the table without the auto incrementing id, return nothing
+
+    public void insert(@NotNull Stuff stuff) {
+        // Not sure whether I need to additionally specify usingColumns() ???
+        final int count = new SimpleJdbcInsert(jdbcTemplate)
+                .withSchemaName(schemaName)
+                .withTableName(tableName_stuff)
+                .execute(makeMapForRow(stuff));
+        assert count == 1;
+    }
+
+    // Update the ensembleId a row given an id (row may not exist).
+    // Return true if found.
+
+    public boolean updatePayloadById(@NotNull StuffId stuffId, @NotNull String payload) {
+        final int count = jdbcTemplate.update("UPDATE "
                 + fqTableName_stuff
                 + " SET "
                 + field_payload
@@ -167,32 +254,36 @@ public class Db {
                 + " WHERE "
                 + field_id
                 + " = ?", payload, stuffId.getRaw());
+        assert count >= 0 && count <= 1;
+        return count == 1;
     }
 
-    public void insertWithId(@NotNull StuffId stuffId, @NotNull EnsembleId ensembleId, @NotNull String payload) {
-        new SimpleJdbcInsert(jdbcTemplate)
-                .withSchemaName(schemaName)
-                .withTableName(tableName_stuff)
-                .usingColumns(field_id, field_ensemble, field_payload)
-                .execute(makeMapForRow(stuffId, ensembleId, payload));
-    }
+    // Update the ensembleId a row given an id (row may not exist).
+    // Return true if found.
 
-    public int updateById(@NotNull StuffId stuffId, @NotNull EnsembleId newEnsembleId) {
-        return jdbcTemplate.update("UPDATE "
+    public boolean updateEnsembleById(@NotNull StuffId stuffId, @NotNull EnsembleId ensembleId) {
+        final int count = jdbcTemplate.update("UPDATE "
                 + fqTableName_stuff
                 + " SET "
                 + field_ensemble
                 + " = ? "
                 + " WHERE "
                 + field_id
-                + " = ?", newEnsembleId.getRaw(), stuffId.getRaw());
+                + " = ?", ensembleId.getRaw(), stuffId.getRaw());
+        assert count >= 0 && count <= 1;
+        return count == 1;
     }
 
-    public int deleteById(@NotNull StuffId stuffId) {
-        return jdbcTemplate.update("DELETE FROM "
+    // Delete a row given an id (row may not exist).
+    // Return true if found.
+
+    public boolean deleteById(@NotNull StuffId stuffId) {
+        final int count = jdbcTemplate.update("DELETE FROM "
                 + fqTableName_stuff
                 + " WHERE "
                 + field_id
                 + " = ?", stuffId.getRaw());
+        assert count >= 0 && count <= 1;
+        return count == 1;
     }
 }

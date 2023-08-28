@@ -1,11 +1,15 @@
-package name.heavycarbon.h2_exercises.transactions.session;
+package name.heavycarbon.h2_exercises.transactions.db;
 
 import org.jetbrains.annotations.NotNull;
 
 // ---
-// The "isolation level".
+// The "ANSI isolation level", a confusing and ill-defined concept, and also badly named.
+// (see "A critique of ANSI SQL Isolation Levels", https://arxiv.org/abs/cs/0701157, June 1995)
+//
 // This is basically the same as the H2 class "org.h2.engine.IsolationLevel", but simpler.
 // http://h2database.com/javadoc/org/h2/engine/IsolationLevel.html?highlight=isolationLevel&search=isolationlevel
+//
+// N.B. Not "comparator" because the levels do not form a total order
 // ---
 
 public enum Isol {

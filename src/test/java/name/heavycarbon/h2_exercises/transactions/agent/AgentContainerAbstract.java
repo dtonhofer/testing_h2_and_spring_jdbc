@@ -2,31 +2,31 @@ package name.heavycarbon.h2_exercises.transactions.agent;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 // ---
 // Base class for "containers of agents"
 // ---
 
-public abstract class AgentContainerBase {
+public abstract class AgentContainerAbstract {
 
-    // a test may select on of the following operations
+    // A test may select on of the following operations
+    // "MoveIn" and "MoveOut" are for eliciting phantom reads,
+    // where you update a record to move it into or out of the result set.
 
-    public enum Op {Insert, Update, Delete}
+    public enum Op {Insert, Update, Delete, UpdateIntoPredicateSet, UpdateOutOfPredicateSet}
 
     private Map<AgentId, Agent> agentMap;
 
     // fire-once setter for the agentMap, set it to an unmodifiable map
 
-    protected void setUnmodifiableAgentMap(Agent... agents) {
+    protected void setUnmodifiableAgentMap(List<Agent> agents) {
         Map<AgentId, Agent> agentMapTmp = new HashMap<>();
         for (Agent agent : agents) {
-            agentMapTmp.put(agent.getAgentId(),agent);
+            agentMapTmp.put(agent.getAgentId(), agent);
             agent.getThread().setDaemon(true);
             agent.getThread().setName(agent.getAgentId().toString());
-            agent.getRunnable().setAnyThreadTerminatedBadly(this::isAnyThreadTerminatedBadly);
+            agent.getRunnable().setAnyThreadTerminatedBadly(Optional.of(this::isAnyThreadTerminatedBadly));
         }
         this.agentMap = Collections.unmodifiableMap(agentMapTmp);
     }

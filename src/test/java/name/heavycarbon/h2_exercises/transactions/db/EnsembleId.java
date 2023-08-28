@@ -8,7 +8,6 @@ public final class EnsembleId {
 
     public final static EnsembleId One = new EnsembleId(1);
     public final static EnsembleId Two = new EnsembleId(2);
-    public final static EnsembleId Three = new EnsembleId(3);
 
     private final int id;
 

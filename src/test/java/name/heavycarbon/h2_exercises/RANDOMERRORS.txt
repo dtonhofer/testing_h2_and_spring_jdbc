@@ -1,0 +1,32 @@
+Sometimes:
+==========
+
+Non-Repeatable Read, isolation level READ_COMMITTED, operation UpdateIntoPredicateSet, predicate ByEnsembleAndPayload, expecting PhantomRead
+
+org.opentest4j.AssertionFailedError:
+expected:
+  [(StuffId-100,EnsembleId-1,ALFA_AAA),
+      (StuffId-101,EnsembleId-1,BRAVO_AAA),
+      (StuffId-104,EnsembleId-1,DELETE_ME_AAA),
+      (StuffId-105,EnsembleId-1,UPDATE_IN_CHANGED_AAA), <---- was not found even though "inserted between first and second predicate-based SELECT" (i.e. no Phantom Read in READ_COMMITTED)
+      (StuffId-106,EnsembleId-1,UPDATE_OUT_ORIGINAL_AAA)]
+ but was:
+  [(StuffId-100,EnsembleId-1,ALFA_AAA),
+      (StuffId-101,EnsembleId-1,BRAVO_AAA),
+      (StuffId-104,EnsembleId-1,DELETE_ME_AAA),
+      (StuffId-106,EnsembleId-1,UPDATE_OUT_ORIGINAL_AAA)]
+
+Non-Repeatable Read, isolation level READ_COMMITTED, operation UpdateOutOfPredicateSet, predicate ByEnsemble, expecting PhantomRead
+
+org.opentest4j.AssertionFailedError:
+expected:
+  [(StuffId-100,EnsembleId-1,ALFA_AAA),
+      (StuffId-101,EnsembleId-1,BRAVO_AAA),
+      (StuffId-102,EnsembleId-1,CHARLIE_XXX),
+      (StuffId-104,EnsembleId-1,DELETE_ME_AAA)]
+ but was:
+  [(StuffId-100,EnsembleId-1,ALFA_AAA),
+      (StuffId-101,EnsembleId-1,BRAVO_AAA),
+      (StuffId-102,EnsembleId-1,CHARLIE_XXX),
+      (StuffId-104,EnsembleId-1,DELETE_ME_AAA),
+      (StuffId-106,EnsembleId-1,UPDATE_OUT_ORIGINAL_AAA)]  <---- was found even though "updated-out-of-the-set between first and second predicate-based SELECT" (i.e. no Phantom Read in READ_COMMITTED)

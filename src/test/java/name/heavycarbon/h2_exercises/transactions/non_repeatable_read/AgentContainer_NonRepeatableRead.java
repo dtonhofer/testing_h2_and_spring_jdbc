@@ -1,54 +1,37 @@
 package name.heavycarbon.h2_exercises.transactions.non_repeatable_read;
 
 import name.heavycarbon.h2_exercises.transactions.agent.Agent;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerBase;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
-import name.heavycarbon.h2_exercises.transactions.common.ModifierRunnable;
-import name.heavycarbon.h2_exercises.transactions.common.ReaderRunnable;
-import name.heavycarbon.h2_exercises.transactions.common.WhatToRead;
+import name.heavycarbon.h2_exercises.transactions.common.SetupForDirtyAndNonRepeatableRead;
+import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
-import name.heavycarbon.h2_exercises.transactions.db.StuffId;
-import name.heavycarbon.h2_exercises.transactions.session.Isol;
+import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import org.jetbrains.annotations.NotNull;
 
-public class AgentContainer_NonRepeatableRead extends AgentContainerBase {
+import java.util.List;
 
-    public final AgentId modifierId = new AgentId("modifier");
-    public final AgentId readerId = new AgentId("reader");
-    public final AppState appState = new AppState();
+public class AgentContainer_NonRepeatableRead extends AgentContainerAbstract {
 
-    // NB: The "transactionals" are passed in and have been wired-up in the caller by Spring
+    private final AgentId modifierId = new AgentId("modifier");
+    private final AgentId readerId = new AgentId("reader");
+    private final AppState appState = new AppState();
 
     public AgentContainer_NonRepeatableRead(
             @NotNull Db db,
-            @NotNull Transactional_NonRepeatableRead_Modifier modifierTx,
-            @NotNull Transactional_NonRepeatableRead_Reader readerTx,
             @NotNull Isol isol,
-            @NotNull Op op) {
-        final var modifierRunnable = new ModifierRunnable(db, appState, modifierId, isol, modifierTx, op);
-        final var readerRunnable = new ReaderRunnable(db, appState, readerId, isol, readerTx);
-        setUnmodifiableAgentMap(new Agent(modifierRunnable), new Agent(readerRunnable));
+            @NotNull Op op,
+            @NotNull SetupForDirtyAndNonRepeatableRead mods,
+            @NotNull TransactionalGateway txGw) {
+        final var mr = new ModifierRunnable_NonRepeatableRead(db, appState, modifierId, isol, op, mods, txGw);
+        final var rr = new ReaderRunnable_NonRepeatableRead(db, appState, readerId, isol, op, mods, txGw);
+        setUnmodifiableAgentMap(List.of(new Agent(mr), new Agent(rr)));
     }
 
-    public @NotNull ReaderRunnable getReaderRunnable() {
-        return (ReaderRunnable) (get(readerId).getRunnable());
-    }
-
-    public @NotNull ModifierRunnable getModifierRunnable() {
-        return (ModifierRunnable) (get(modifierId).getRunnable());
-    }
-
-    // Called later than construction time from main
-    // once "stuffId" is known; this actually happens before the modifier
-    // thread is started.
-
-    public void setWhatToModify(@NotNull StuffId stuffId) {
-        getModifierRunnable().setSetWhatToModify(stuffId);
-    }
-
-    public void setWhatToRead(@NotNull WhatToRead whatToRead) {
-        getReaderRunnable().setWhatToRead(whatToRead);
+    public @NotNull ReaderRunnable_NonRepeatableRead getReaderRunnable() {
+        // Too much effort to make the get typesafe, just cast!
+        return (ReaderRunnable_NonRepeatableRead) (get(readerId).getRunnable());
     }
 
 }
