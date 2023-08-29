@@ -69,7 +69,7 @@ public class TestElicitingDirtyReads {
     // ---
 
     private void setupDb() {
-        db.setupDatabase(AutoIncrementing.Yes, CleanupFirst.Yes);
+        db.setupStuffTable(AutoIncrementing.Yes, CleanupFirst.Yes);
         db.insert(initRow);
         db.insert(deleteRow);
     }

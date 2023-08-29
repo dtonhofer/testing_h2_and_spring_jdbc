@@ -59,7 +59,7 @@ public class TestElicitingPhantomReads {
     // ---
 
     private void setupDb() {
-        db.setupDatabase(Db.AutoIncrementing.Yes, Db.CleanupFirst.Yes);
+        db.setupStuffTable(Db.AutoIncrementing.Yes, Db.CleanupFirst.Yes);
         setup.initialStuff.forEach(db::insert);
     }
 

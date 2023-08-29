@@ -66,7 +66,7 @@ public class TestElicitingNonRepeatableReads {
     // ---
 
     private void setupDb() {
-        db.setupDatabase(Db.AutoIncrementing.Yes, Db.CleanupFirst.Yes);
+        db.setupStuffTable(Db.AutoIncrementing.Yes, Db.CleanupFirst.Yes);
         db.insert(initRow);
         db.insert(deleteRow);
     }

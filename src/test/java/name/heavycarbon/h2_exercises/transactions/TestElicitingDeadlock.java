@@ -41,7 +41,7 @@ public class TestElicitingDeadlock {
     private static final Stuff stuff_x = new Stuff(200, EnsembleId.Two, "---");
 
     private void setupDb() {
-        db.setupDatabase(Db.AutoIncrementing.Yes, Db.CleanupFirst.Yes);
+        db.setupStuffTable(Db.AutoIncrementing.Yes, Db.CleanupFirst.Yes);
         db.insert(stuff_a);
         db.insert(stuff_b);
         db.insert(stuff_x);

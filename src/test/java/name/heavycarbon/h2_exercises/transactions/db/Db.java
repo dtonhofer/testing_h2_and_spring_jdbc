@@ -48,37 +48,81 @@ public class Db {
     public final static String schemaName = "testing_transactions";
 
     public final static String tableName_stuff = "stuff";
-
     public final static String fqTableName_stuff = String.format("%s.%s", schemaName, tableName_stuff);
+
+    public final static String tableName_foo = "foo";
+    public final static String fqTableName_foo = String.format("%s.%s", schemaName, tableName_foo);
+
+    public final static String tableName_bar = "bar";
+    public final static String fqTableName_bar = String.format("%s.%s", schemaName, tableName_bar);
 
     public final static String field_id = "id";
     public final static String field_ensemble = "ensemble"; // used in selection predicates
     public final static String field_payload = "payload"; // arbitrary text payload
+    public final static String field_parent_id = "parent_id"; // parent id, used for hierarchy
 
     // ---
 
     private void createTableWithAutoincrementId() {
-        final String sqlRaw = "CREATE TABLE IF NOT EXISTS "
+        final String sql = "CREATE TABLE IF NOT EXISTS "
                 + fqTableName_stuff
                 + " ("
                 + field_id + " INTEGER AUTO_INCREMENT PRIMARY KEY, "
                 + field_ensemble + " INTEGER NOT NULL, "
                 + field_payload + " VARCHAR(50) NOT NULL "
-                + " )";
-        jdbcTemplate.execute(sqlRaw);
+                + ")";
+        jdbcTemplate.execute(sql);
     }
 
     // ---
 
     private void createTable() {
-        final String sqlRaw = "CREATE TABLE IF NOT EXISTS "
+        final String sql = "CREATE TABLE IF NOT EXISTS "
                 + fqTableName_stuff
                 + " ("
                 + field_id + " INTEGER PRIMARY KEY, "
                 + field_ensemble + " INTEGER NOT NULL, "
                 + field_payload + " VARCHAR(50) NOT NULL "
-                + " )";
-        jdbcTemplate.execute(sqlRaw);
+                + ")";
+        jdbcTemplate.execute(sql);
+    }
+
+    // ---
+
+    private void createTableFoo() {
+        final String sql = "CREATE TABLE IF NOT EXISTS "
+                + fqTableName_foo
+                + " ("
+                + field_id + " INTEGER PRIMARY KEY, "
+                + field_payload + " VARCHAR(50) NOT NULL "
+                + ")";
+        jdbcTemplate.execute(sql);
+    }
+
+    private void createTableBar() {
+        final String sql = "CREATE TABLE IF NOT EXISTS "
+                + fqTableName_bar
+                + " ("
+                + field_id + " INTEGER PRIMARY KEY, "
+                + field_payload + " VARCHAR(50) NOT NULL, "
+                + field_parent_id + " INTEGER NOT NULL "
+                + ")";
+        jdbcTemplate.execute(sql);
+    }
+
+    private void createConstraintBetweenBarAndFoo() {
+        final String sql = "ALTER TABLE "
+                + fqTableName_bar
+                + " ADD FOREIGN KEY "
+                + "("
+                + field_parent_id
+                + ")"
+                + " REFERENCES "
+                + fqTableName_foo
+                + "("
+                + field_id
+                + ")";
+        jdbcTemplate.execute(sql);
     }
 
     // ---
@@ -90,7 +134,7 @@ public class Db {
 
     public enum CleanupFirst {Yes, No}
 
-    public void setupDatabase(@NotNull AutoIncrementing autoIncrementing, @NotNull CleanupFirst cleanupFirst) {
+    public void setupStuffTable(@NotNull AutoIncrementing autoIncrementing, @NotNull CleanupFirst cleanupFirst) {
         if (cleanupFirst == CleanupFirst.Yes) {
             DbHelpers.dropSchema(schemaName, true, jdbcTemplate);
         }
@@ -100,6 +144,16 @@ public class Db {
         } else {
             createTable();
         }
+    }
+
+    public void setupFooBarTables(@NotNull CleanupFirst cleanupFirst) {
+        if (cleanupFirst == CleanupFirst.Yes) {
+            DbHelpers.dropSchema(schemaName, true, jdbcTemplate);
+        }
+        DbHelpers.createSchema(schemaName, jdbcTemplate);
+        createTableFoo();
+        createTableBar();
+        createConstraintBetweenBarAndFoo();
     }
 
     // ---

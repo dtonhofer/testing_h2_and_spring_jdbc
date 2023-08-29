@@ -1,0 +1,3 @@
+If you have a table with an autoincrementing column, this
+comes at a price: transactions may generate deadlocks more
+easily when inserting new records.
