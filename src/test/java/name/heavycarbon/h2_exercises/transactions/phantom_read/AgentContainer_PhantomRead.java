@@ -1,7 +1,7 @@
 package name.heavycarbon.h2_exercises.transactions.phantom_read;
 
 import name.heavycarbon.h2_exercises.transactions.agent.Agent;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
@@ -11,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-public class AgentContainer_PhantomRead extends AgentContainerAbstract {
+public class AgentContainer_PhantomRead extends AgentContainer {
 
     private final AgentId modifierId = new AgentId("modifier");
     private final AgentId readerId = new AgentId("reader");

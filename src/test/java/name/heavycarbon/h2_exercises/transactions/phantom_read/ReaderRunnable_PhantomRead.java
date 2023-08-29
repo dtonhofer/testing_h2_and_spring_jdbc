@@ -1,10 +1,10 @@
 package name.heavycarbon.h2_exercises.transactions.phantom_read;
 
 import lombok.extern.slf4j.Slf4j;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract.Op;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
-import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableTransactionalAbstract;
+import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableSyncOnAppStateInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Slf4j
-public class ReaderRunnable_PhantomRead extends AgentRunnableTransactionalAbstract {
+public class ReaderRunnable_PhantomRead extends AgentRunnableSyncOnAppStateInsideTransaction {
 
     // Store the result of reading here so that the main thread can pick it up
 

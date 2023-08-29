@@ -12,9 +12,9 @@ public class Agent {
 
     @NotNull AgentId agentId;
     @NotNull Thread thread;
-    @NotNull AgentRunnableAbstract runnable;
+    @NotNull AgentRunnable runnable;
 
-    public Agent(@NotNull AgentRunnableAbstract runnable) {
+    public Agent(@NotNull AgentRunnable runnable) {
         this.agentId = runnable.getAgentId();
         this.thread = new Thread(runnable);
         this.runnable = runnable;

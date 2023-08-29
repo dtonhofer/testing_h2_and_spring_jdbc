@@ -1,20 +1,21 @@
 package name.heavycarbon.h2_exercises.transactions.non_repeatable_read;
 
 import lombok.extern.slf4j.Slf4j;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract.Op;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
-import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableTransactionalAbstract;
-import name.heavycarbon.h2_exercises.transactions.common.Setup_DirtyAndNonRepeatableRead;
+import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableSyncOnAppStateInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import org.jetbrains.annotations.NotNull;
 
 @Slf4j
-public class ModifierRunnable_NonRepeatableRead extends AgentRunnableTransactionalAbstract {
+public class ModifierRunnable_NonRepeatableRead extends AgentRunnableSyncOnAppStateInsideTransaction {
 
-    private final Setup_DirtyAndNonRepeatableRead setup;
+    // Instructions what to modify inside the modifying transaction
+
+    private final Setup setup;
 
     // ---
 
@@ -23,7 +24,7 @@ public class ModifierRunnable_NonRepeatableRead extends AgentRunnableTransaction
                                               @NotNull AgentId agentId,
                                               @NotNull Isol isol,
                                               @NotNull Op op,
-                                              @NotNull Setup_DirtyAndNonRepeatableRead setup,
+                                              @NotNull Setup setup,
                                               @NotNull TransactionalGateway txGw) {
         super(db, appState, agentId, isol, op, txGw);
         this.setup = setup;

@@ -8,7 +8,7 @@ import java.util.*;
 // Base class for "containers of agents"
 // ---
 
-public abstract class AgentContainerAbstract {
+public abstract class AgentContainer {
 
     // A test may select on of the following operations
     // "MoveIn" and "MoveOut" are for eliciting phantom reads,

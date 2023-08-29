@@ -1,12 +1,11 @@
 package name.heavycarbon.h2_exercises.transactions.non_repeatable_read;
 
 import lombok.extern.slf4j.Slf4j;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract.Op;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
-import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableTransactionalAbstract;
+import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableSyncOnAppStateInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.DualListOfStuff;
-import name.heavycarbon.h2_exercises.transactions.common.Setup_DirtyAndNonRepeatableRead;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
@@ -18,7 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Slf4j
-public class ReaderRunnable_NonRepeatableRead extends AgentRunnableTransactionalAbstract {
+public class ReaderRunnable_NonRepeatableRead extends AgentRunnableSyncOnAppStateInsideTransaction {
 
     // Store the result of reading here so that the main thread can pick it up
 
@@ -26,7 +25,7 @@ public class ReaderRunnable_NonRepeatableRead extends AgentRunnableTransactional
 
     // Instructions what to modify inside the modifying transaction
 
-    private final @NotNull Setup_DirtyAndNonRepeatableRead setup;
+    private final @NotNull Setup setup;
 
     // ---
 
@@ -35,7 +34,7 @@ public class ReaderRunnable_NonRepeatableRead extends AgentRunnableTransactional
                                             @NotNull AgentId agentId,
                                             @NotNull Isol isol,
                                             @NotNull Op op,
-                                            @NotNull Setup_DirtyAndNonRepeatableRead setup,
+                                            @NotNull Setup setup,
                                             @NotNull TransactionalGateway txGw) {
         super(db, appState, agentId, isol, op, txGw);
         this.setup = setup;

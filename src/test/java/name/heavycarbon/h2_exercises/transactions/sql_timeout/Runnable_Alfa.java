@@ -1,17 +1,17 @@
 package name.heavycarbon.h2_exercises.transactions.sql_timeout;
 
 import lombok.extern.slf4j.Slf4j;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
-import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableTransactionalAbstract;
+import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableSyncOnAppStateInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import org.jetbrains.annotations.NotNull;
 
 @Slf4j
-public class Runnable_Alfa extends AgentRunnableTransactionalAbstract {
+public class Runnable_Alfa extends AgentRunnableSyncOnAppStateInsideTransaction {
 
     private final @NotNull Setup setup;
 
@@ -21,7 +21,7 @@ public class Runnable_Alfa extends AgentRunnableTransactionalAbstract {
                          @NotNull Isol isol,
                          @NotNull Setup setup,
                          @NotNull TransactionalGateway txGw) {
-        super(db, appState, agentId, isol, AgentContainerAbstract.Op.Unset, txGw);
+        super(db, appState, agentId, isol, AgentContainer.Op.Unset, txGw);
         this.setup = setup;
     }
 
@@ -36,7 +36,6 @@ public class Runnable_Alfa extends AgentRunnableTransactionalAbstract {
             }
             case 2 -> {
                 getDb().updatePayloadById(setup.stuff_x().getId(), "UPDATED BY ALFA");
-                // do not commit yet
                 incState();
             }
             case 4 -> {

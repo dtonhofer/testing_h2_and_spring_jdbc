@@ -3,13 +3,13 @@ package name.heavycarbon.h2_exercises.transactions.common;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.*;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract.Op;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import org.jetbrains.annotations.NotNull;
 
 @Slf4j
-public abstract class AgentRunnableTransactionalAbstract extends AgentRunnableAbstract {
+public abstract class AgentRunnableSyncOnAppStateInsideTransaction extends AgentRunnable {
 
     // Reference to a class that has a method annotated @Transactional
 
@@ -18,12 +18,12 @@ public abstract class AgentRunnableTransactionalAbstract extends AgentRunnableAb
 
     // ---
 
-    public AgentRunnableTransactionalAbstract(@NotNull Db db,
-                                              @NotNull AppState appState,
-                                              @NotNull AgentId agentId,
-                                              @NotNull Isol isol,
-                                              @NotNull Op op,
-                                              @NotNull TransactionalGateway txGw) {
+    public AgentRunnableSyncOnAppStateInsideTransaction(@NotNull Db db,
+                                                        @NotNull AppState appState,
+                                                        @NotNull AgentId agentId,
+                                                        @NotNull Isol isol,
+                                                        @NotNull Op op,
+                                                        @NotNull TransactionalGateway txGw) {
         super(db, appState, agentId, isol, op);
         this.txGw = txGw;
     }
@@ -36,8 +36,12 @@ public abstract class AgentRunnableTransactionalAbstract extends AgentRunnableAb
             txGw.wrapIntoTransaction(this::syncOnAppState, getAgentId(), getIsol());
             // <<<
         } catch (Exception ex) {
-            // Only Exceptions. Errors are let through
-            exceptionMessage(log, ex);
+            // Catch only Exceptions. Errors are let through!
+            // Note that Spring will have performed a ROLLBACK if:
+            // - The "Throwable" is an "Error" or an unchecked "Exception"
+            // or
+            // - The "Exception" has been marked as causing ROLLBACK in the "@Transaction" annotation
+            exceptionMessage(log, ex, PrintException.No);
         }
     }
 

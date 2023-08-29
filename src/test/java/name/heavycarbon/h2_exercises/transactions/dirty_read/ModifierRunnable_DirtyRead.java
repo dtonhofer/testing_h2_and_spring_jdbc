@@ -1,23 +1,22 @@
 package name.heavycarbon.h2_exercises.transactions.dirty_read;
 
 import lombok.extern.slf4j.Slf4j;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract.Op;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
 import name.heavycarbon.h2_exercises.transactions.agent.MyRollbackException;
-import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableTransactionalAbstract;
-import name.heavycarbon.h2_exercises.transactions.common.Setup_DirtyAndNonRepeatableRead;
+import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableSyncOnAppStateInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import org.jetbrains.annotations.NotNull;
 
 @Slf4j
-public class ModifierRunnable_DirtyRead extends AgentRunnableTransactionalAbstract {
+public class ModifierRunnable_DirtyRead extends AgentRunnableSyncOnAppStateInsideTransaction {
 
     // Instructions as to what modifications to apply to the database
 
-    private final Setup_DirtyAndNonRepeatableRead setup;
+    private final Setup setup;
 
     // ---
 
@@ -26,7 +25,7 @@ public class ModifierRunnable_DirtyRead extends AgentRunnableTransactionalAbstra
                                       @NotNull AgentId agentId,
                                       @NotNull Isol isol,
                                       @NotNull Op op,
-                                      @NotNull Setup_DirtyAndNonRepeatableRead setup,
+                                      @NotNull Setup setup,
                                       @NotNull TransactionalGateway txGw) {
         super(db, appState, agentId, isol, op, txGw);
         this.setup = setup;

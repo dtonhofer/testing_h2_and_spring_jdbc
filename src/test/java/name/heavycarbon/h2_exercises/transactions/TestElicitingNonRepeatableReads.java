@@ -1,16 +1,11 @@
 package name.heavycarbon.h2_exercises.transactions;
 
 import lombok.extern.slf4j.Slf4j;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract.Op;
-import name.heavycarbon.h2_exercises.transactions.common.Setup_DirtyAndNonRepeatableRead;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
-import name.heavycarbon.h2_exercises.transactions.db.Db;
-import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
-import name.heavycarbon.h2_exercises.transactions.db.Stuff;
-import name.heavycarbon.h2_exercises.transactions.db.StuffId;
+import name.heavycarbon.h2_exercises.transactions.db.*;
 import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.AgentContainer_NonRepeatableRead;
-import name.heavycarbon.h2_exercises.transactions.db.Isol;
-import name.heavycarbon.h2_exercises.transactions.db.SessionManip;
+import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.Setup;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -83,10 +78,7 @@ public class TestElicitingNonRepeatableReads {
     void testNonRepeatableRead(@NotNull Isol isol, @NotNull Op op, @NotNull Expected expected) {
         setupDb();
         log.info("STARTING: Non-Repeatable Read, isolation level {}, operation {}", isol, op);
-
-        final Setup_DirtyAndNonRepeatableRead mods = new Setup_DirtyAndNonRepeatableRead(initRow, updateRow, insertRow, deleteRow);
-
-        final var ac = new AgentContainer_NonRepeatableRead(db, isol, op, mods, txGw);
+        final var ac = new AgentContainer_NonRepeatableRead(db, isol, op, new Setup(initRow, updateRow, insertRow, deleteRow), txGw);
         {
             ac.startAll();
             ac.joinAll();

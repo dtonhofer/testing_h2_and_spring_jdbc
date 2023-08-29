@@ -3,7 +3,7 @@ package name.heavycarbon.h2_exercises.transactions.agent;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract.Op;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import name.heavycarbon.h2_exercises.transactions.db.SessionInfoExt;
@@ -22,7 +22,7 @@ import java.util.function.Supplier;
 // ---
 
 @Slf4j
-public abstract class AgentRunnableAbstract implements Runnable {
+public abstract class AgentRunnable implements Runnable {
 
     // The class fronting database queries
 
@@ -73,7 +73,7 @@ public abstract class AgentRunnableAbstract implements Runnable {
 
     // ---
 
-    public AgentRunnableAbstract(@NotNull Db db, @NotNull AppState appState, @NotNull AgentId agentId, @NotNull Isol isol, @NotNull Op op) {
+    public AgentRunnable(@NotNull Db db, @NotNull AppState appState, @NotNull AgentId agentId, @NotNull Isol isol, @NotNull Op op) {
         this.db = db;
         this.appState = appState;
         this.agentId = agentId;
@@ -179,8 +179,12 @@ public abstract class AgentRunnableAbstract implements Runnable {
         return agentId + " terminating. stop: " + stop + ", interrupted: " + interrupted + ", bad threads: " + isAnyThreadTerminatedBadly();
     }
 
-    protected void exceptionMessage(@NotNull Logger log, @NotNull Exception ex) {
+    public enum PrintException {Yes, No}
+
+    protected void exceptionMessage(@NotNull Logger log, @NotNull Exception ex, @NotNull PrintException print) {
         log.error("'{}' terminating due to '{}' with message '{}'", agentId, ex.getClass().getName(), ex.getMessage());
-        log.error("The exception: {} ",ex);
+        if (print == PrintException.Yes) {
+            log.error("The exception: {} ", ex);
+        }
     }
 }

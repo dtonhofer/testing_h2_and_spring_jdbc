@@ -58,12 +58,20 @@ public class TestElicitingSqlTimeout {
             ac.startAll();
             ac.joinAll();
         }
+        if (isol == Isol.READ_UNCOMMITTED) {
+            // Bravo read the X as updated by Alfa
+            Assertions.assertThat(ac.getBravo().getAsSeenInState3()).isEqualTo(stuff_x.with("UPDATED BY ALFA"));
+        }
+        else {
+            // Bravo read the X that existed of the start of transaction
+            Assertions.assertThat(ac.getBravo().getAsSeenInState3()).isEqualTo(stuff_x);
+        }
         Assertions.assertThat(ac.isAnyThreadTerminatedBadly()).isTrue();
-        // Alfa wrote its marker
+        // Alfa wrote its marker A
         Assertions.assertThat(db.readById(stuff_a.getId()).orElseThrow().getPayload()).isEqualTo("ALFA WAS HERE");
-        // Bravo was rolled back
+        // Bravo was rolled back, so its marker B is untouched
         Assertions.assertThat(db.readById(stuff_b.getId()).orElseThrow().getPayload()).isEqualTo("---");
-        // Alfa won writing x
+        // Alfa won writing X
         Assertions.assertThat(db.readById(stuff_x.getId()).orElseThrow().getPayload()).isEqualTo("UPDATED BY ALFA");
         // Found an "org.springframework.dao.QueryTimeoutException" at the JDBC level
         // TODO : Which is however transformed into an "org.springframework.transaction.TransactionSystemException"

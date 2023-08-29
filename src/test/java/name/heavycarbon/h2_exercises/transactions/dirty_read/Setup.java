@@ -1,20 +1,20 @@
-package name.heavycarbon.h2_exercises.transactions.common;
+package name.heavycarbon.h2_exercises.transactions.dirty_read;
 
 import lombok.Value;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer;
 import name.heavycarbon.h2_exercises.transactions.db.Stuff;
 import name.heavycarbon.h2_exercises.transactions.db.StuffId;
 import org.jetbrains.annotations.NotNull;
 
 @Value
-public class Setup_DirtyAndNonRepeatableRead {
+public class Setup {
 
     @NotNull Stuff initRow;
     @NotNull Stuff updateRow;
     @NotNull Stuff insertRow;
     @NotNull Stuff deleteRow;
 
-    public @NotNull StuffId getIdThatShallBeReadForGivenOp(@NotNull AgentContainerAbstract.Op op) {
+    public @NotNull StuffId getIdThatShallBeReadForGivenOp(@NotNull AgentContainer.Op op) {
         return switch (op) {
             case Update -> updateRow.getId();
             case Insert -> insertRow.getId();

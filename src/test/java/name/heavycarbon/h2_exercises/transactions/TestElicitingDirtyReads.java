@@ -1,13 +1,13 @@
 package name.heavycarbon.h2_exercises.transactions;
 
 import lombok.extern.slf4j.Slf4j;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract.Op;
-import name.heavycarbon.h2_exercises.transactions.common.Setup_DirtyAndNonRepeatableRead;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.*;
 import name.heavycarbon.h2_exercises.transactions.db.Db.AutoIncrementing;
 import name.heavycarbon.h2_exercises.transactions.db.Db.CleanupFirst;
 import name.heavycarbon.h2_exercises.transactions.dirty_read.AgentContainer_DirtyRead;
+import name.heavycarbon.h2_exercises.transactions.dirty_read.Setup;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -80,8 +80,7 @@ public class TestElicitingDirtyReads {
     @MethodSource("provideTestArgStream")
     void testDirtyRead(@NotNull Isol isol, @NotNull Op op, @NotNull Expected expected) {
         setupDb();
-        final Setup_DirtyAndNonRepeatableRead mods = new Setup_DirtyAndNonRepeatableRead(initRow, updateRow, insertRow, deleteRow);
-        final var ac = new AgentContainer_DirtyRead(db, isol, op, mods, txGw);
+        final var ac = new AgentContainer_DirtyRead(db, isol, op, new Setup(initRow, updateRow, insertRow, deleteRow), txGw);
         {
             ac.startAll();
             ac.joinAll();
