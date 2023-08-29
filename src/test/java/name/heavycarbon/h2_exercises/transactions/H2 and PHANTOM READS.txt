@@ -1,5 +1,6 @@
-Sometimes:
-==========
+H2 apparently does not allow PHANTOM READs as they don't appear in isolation level REPEATABLE READ.
+
+Sometimes and randomly H2 actually eliminates them in READ COMMMITTED. Example:
 
 Non-Repeatable Read, isolation level READ_COMMITTED, operation UpdateIntoPredicateSet, predicate ByEnsembleAndPayload, expecting PhantomRead
 

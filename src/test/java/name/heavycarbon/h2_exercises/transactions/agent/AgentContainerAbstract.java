@@ -14,7 +14,7 @@ public abstract class AgentContainerAbstract {
     // "MoveIn" and "MoveOut" are for eliciting phantom reads,
     // where you update a record to move it into or out of the result set.
 
-    public enum Op {Insert, Update, Delete, UpdateIntoPredicateSet, UpdateOutOfPredicateSet}
+    public enum Op {Unset, Insert, Update, Delete, UpdateIntoPredicateSet, UpdateOutOfPredicateSet}
 
     private Map<AgentId, Agent> agentMap;
 

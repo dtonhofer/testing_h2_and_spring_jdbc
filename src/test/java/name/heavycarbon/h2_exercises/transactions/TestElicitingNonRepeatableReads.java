@@ -2,7 +2,7 @@ package name.heavycarbon.h2_exercises.transactions;
 
 import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract.Op;
-import name.heavycarbon.h2_exercises.transactions.common.SetupForDirtyAndNonRepeatableRead;
+import name.heavycarbon.h2_exercises.transactions.common.Setup_DirtyAndNonRepeatableRead;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
@@ -84,7 +84,7 @@ public class TestElicitingNonRepeatableReads {
         setupDb();
         log.info("STARTING: Non-Repeatable Read, isolation level {}, operation {}", isol, op);
 
-        final SetupForDirtyAndNonRepeatableRead mods = new SetupForDirtyAndNonRepeatableRead(initRow, updateRow, insertRow, deleteRow);
+        final Setup_DirtyAndNonRepeatableRead mods = new Setup_DirtyAndNonRepeatableRead(initRow, updateRow, insertRow, deleteRow);
 
         final var ac = new AgentContainer_NonRepeatableRead(db, isol, op, mods, txGw);
         {

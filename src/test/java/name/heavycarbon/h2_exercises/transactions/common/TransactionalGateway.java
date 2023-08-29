@@ -2,6 +2,7 @@ package name.heavycarbon.h2_exercises.transactions.common;
 
 import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
+import name.heavycarbon.h2_exercises.transactions.agent.MyRollbackException;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import name.heavycarbon.h2_exercises.transactions.db.SessionManip;
 import org.jetbrains.annotations.NotNull;
@@ -52,9 +53,9 @@ public class TransactionalGateway {
     // Java create the Runnable by using "functional interface" notation.
     // ---
 
-    @Transactional
-    public void wrapIntoTransaction(@NotNull Runnable runnable, @NotNull AgentId agentId, @NotNull Isol isol) {
-        log.info("{} in transaction.", agentId);
+    @Transactional(rollbackFor = { MyRollbackException.class })
+    public void wrapIntoTransaction(@NotNull ThrowingRunnable runnable, @NotNull AgentId agentId, @NotNull Isol isol) throws MyRollbackException {
+        log.info("{} in transaction. Setting isolation level {}", agentId, isol);
         sm.setMySessionIsolationLevel(isol);
         runnable.run();
     }

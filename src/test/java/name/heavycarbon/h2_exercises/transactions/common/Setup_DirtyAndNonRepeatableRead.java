@@ -7,7 +7,7 @@ import name.heavycarbon.h2_exercises.transactions.db.StuffId;
 import org.jetbrains.annotations.NotNull;
 
 @Value
-public class SetupForDirtyAndNonRepeatableRead {
+public class Setup_DirtyAndNonRepeatableRead {
 
     @NotNull Stuff initRow;
     @NotNull Stuff updateRow;

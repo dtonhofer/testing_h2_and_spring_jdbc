@@ -4,9 +4,8 @@ import name.heavycarbon.h2_exercises.transactions.agent.Agent;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
-import name.heavycarbon.h2_exercises.transactions.common.SetupForDirtyAndNonRepeatableRead;
+import name.heavycarbon.h2_exercises.transactions.common.Setup_DirtyAndNonRepeatableRead;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
-import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway_Throwing;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import org.jetbrains.annotations.NotNull;
@@ -23,11 +22,10 @@ public class AgentContainer_DirtyRead extends AgentContainerAbstract {
             @NotNull Db db,
             @NotNull Isol isol,
             @NotNull Op op,
-            @NotNull SetupForDirtyAndNonRepeatableRead mods,
-            @NotNull TransactionalGateway_Throwing txGw_throwing,
+            @NotNull Setup_DirtyAndNonRepeatableRead setup,
             @NotNull TransactionalGateway txGw) {
-        final var mr = new ModifierRunnable_DirtyRead(db, appState, modifierId, isol, op, mods, txGw_throwing);
-        final var rr = new ReaderRunnable_DirtyRead(db, appState, readerId, isol, op, mods, txGw);
+        final var mr = new ModifierRunnable_DirtyRead(db, appState, modifierId, isol, op, setup, txGw);
+        final var rr = new ReaderRunnable_DirtyRead(db, appState, readerId, isol, op, setup, txGw);
         setUnmodifiableAgentMap(List.of(new Agent(mr), new Agent(rr)));
     }
 

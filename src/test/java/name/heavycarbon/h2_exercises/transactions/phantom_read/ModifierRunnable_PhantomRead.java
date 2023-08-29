@@ -3,79 +3,34 @@ package name.heavycarbon.h2_exercises.transactions.phantom_read;
 import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentRunnableAbstract;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
+import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableTransactionalAbstract;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import name.heavycarbon.h2_exercises.transactions.db.StuffId;
-import name.heavycarbon.h2_exercises.transactions.phantom_read.AgentContainer_PhantomRead.PhantomicPredicate;
 import org.jetbrains.annotations.NotNull;
 
 @Slf4j
-public class ModifierRunnable_PhantomRead extends AgentRunnableAbstract {
+public class ModifierRunnable_PhantomRead extends AgentRunnableTransactionalAbstract {
 
-    private final TransactionalGateway txGw;
-
-    // Instructions as to what modifications to apply to the database
-
-    private final SetupForPhantomReads mods;
-    private final PhantomicPredicate phantomicPredicate;
-
-    // ---
+    private final Setup_PhantomRead setup;
 
     public ModifierRunnable_PhantomRead(@NotNull Db db,
                                         @NotNull AppState appState,
                                         @NotNull AgentId agentId,
                                         @NotNull Isol isol,
                                         @NotNull Op op,
-                                        @NotNull PhantomicPredicate phantomicPredicate,
-                                        @NotNull SetupForPhantomReads mods,
+                                        @NotNull Setup_PhantomRead setup,
                                         @NotNull TransactionalGateway txGw) {
-        super(db, appState, agentId, isol, op);
-        this.txGw = txGw;
-        this.mods = mods;
-        this.phantomicPredicate = phantomicPredicate;
+        super(db, appState, agentId, isol, op, txGw);
+        this.setup = setup;
     }
 
-    @Override
-    public void run() {
-        log.info("{} starting.", getAgentId());
-        try {
-            txGw.wrapIntoTransaction(this::syncOnAppState, getAgentId(), getIsol());
-        } catch (Exception ex) {
-            // Only Exceptions, Errors are let through
-            exceptionMessage(log, ex);
-        }
-    }
+    // This is eventually called from the state machine loop inside a transaction
 
-    // Having opened a transaction, we are called back ... here!
-
-    public void syncOnAppState() {
-        synchronized (getAppState()) {
-            log.info("{} in critical section.", getAgentId());
-            catchInterruptedExceptionFromStateMachineLoop();
-        }
-    }
-
-    private void catchInterruptedExceptionFromStateMachineLoop() {
-        boolean interrupted = false; // set when the thread notices it has been interrupted
-        try {
-            runStateMachineLoop();
-        } catch (InterruptedException ex) {
-            interrupted = true;
-        }
-        log.info(finalMessage(interrupted));
-    }
-
-    private void runStateMachineLoop() throws InterruptedException {
-        while (isContinue()) {
-            switchByAppState();
-        }
-    }
-
-    private void switchByAppState() throws InterruptedException {
+    protected void switchByAppState() throws InterruptedException {
         switch (getAppState().get()) {
             case 1 -> {
                 switchByOpAndPhantomicPredicate();
@@ -89,19 +44,19 @@ public class ModifierRunnable_PhantomRead extends AgentRunnableAbstract {
 
     private void switchByOpAndPhantomicPredicate() {
         switch (getOp()) {
-            case Insert -> getDb().insert(mods.insertMe);
-            case Delete -> getDb().deleteById(mods.deleteMe.getId());
+            case Insert -> getDb().insert(setup.insertMe);
+            case Delete -> getDb().deleteById(setup.deleteMe.getId());
             case UpdateIntoPredicateSet -> {
-                final StuffId id = mods.updateForMovingIn.getId();
-                final String newPayload = mods.updateForMovingInChanged.getPayload();
-                final EnsembleId newEnsembleId = mods.updateForMovingInChanged.getEnsembleId();
+                final StuffId id = setup.updateForMovingIn.getId();
+                final String newPayload = setup.updateForMovingInChanged.getPayload();
+                final EnsembleId newEnsembleId = setup.updateForMovingInChanged.getEnsembleId();
                 getDb().updateEnsembleById(id, newEnsembleId);
                 getDb().updatePayloadById(id, newPayload);
             }
             case UpdateOutOfPredicateSet -> {
-                final StuffId id = mods.updateForMovingOut.getId();
-                final String newPayload = mods.updateForMovingOutChanged.getPayload();
-                final EnsembleId newEnsembleId = mods.updateForMovingOutChanged.getEnsembleId();
+                final StuffId id = setup.updateForMovingOut.getId();
+                final String newPayload = setup.updateForMovingOutChanged.getPayload();
+                final EnsembleId newEnsembleId = setup.updateForMovingOutChanged.getEnsembleId();
                 getDb().updateEnsembleById(id, newEnsembleId);
                 getDb().updatePayloadById(id, newPayload);
             }

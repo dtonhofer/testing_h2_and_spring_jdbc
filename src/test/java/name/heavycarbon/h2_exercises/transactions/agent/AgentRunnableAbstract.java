@@ -180,7 +180,7 @@ public abstract class AgentRunnableAbstract implements Runnable {
     }
 
     protected void exceptionMessage(@NotNull Logger log, @NotNull Exception ex) {
-        log.error("{} terminating due to {} with message {}", agentId, ex.getClass().getName(), ex.getMessage());
-        log.error("The exception {} ",ex);
+        log.error("'{}' terminating due to '{}' with message '{}'", agentId, ex.getClass().getName(), ex.getMessage());
+        log.error("The exception: {} ",ex);
     }
 }

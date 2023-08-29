@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-public class SetupForPhantomReads {
+public class Setup_PhantomRead {
 
     // Selection "by ensemble": Those with value EnsembleId.One
     // Selection "by payload": Those which end in "AA" (we use a LIKE match)

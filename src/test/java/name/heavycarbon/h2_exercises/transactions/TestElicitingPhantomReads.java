@@ -9,7 +9,7 @@ import name.heavycarbon.h2_exercises.transactions.db.SessionManip;
 import name.heavycarbon.h2_exercises.transactions.db.Stuff;
 import name.heavycarbon.h2_exercises.transactions.phantom_read.AgentContainer_PhantomRead;
 import name.heavycarbon.h2_exercises.transactions.phantom_read.AgentContainer_PhantomRead.PhantomicPredicate;
-import name.heavycarbon.h2_exercises.transactions.phantom_read.SetupForPhantomReads;
+import name.heavycarbon.h2_exercises.transactions.phantom_read.Setup_PhantomRead;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -54,7 +54,7 @@ public class TestElicitingPhantomReads {
     // Configuration about what to insert, delete, update
     // ---
 
-    private final SetupForPhantomReads setup = new SetupForPhantomReads();
+    private final Setup_PhantomRead setup = new Setup_PhantomRead();
 
     // ---
 
@@ -194,19 +194,12 @@ public class TestElicitingPhantomReads {
     // ---
 
     private void expectSoundness(@NotNull PhantomicPredicate pred, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2) {
-        List<Stuff> expected;
-        switch (pred) {
-            case ByEnsemble -> {
-                expected = setup.getInitialRecordsInDesiredEnsemble();
-            }
-            case ByPayload -> {
-                expected = setup.getInitialRecordsWithMatchingSuffix();
-            }
-            case ByEnsembleAndPayload -> {
-                expected = setup.getInitialRecordsInDesiredEnsembleWithMatchingSuffix();
-            }
+        List<Stuff> expected = switch (pred) {
+            case ByEnsemble -> setup.getInitialRecordsInDesiredEnsemble();
+            case ByPayload -> setup.getInitialRecordsWithMatchingSuffix();
+            case ByEnsembleAndPayload -> setup.getInitialRecordsInDesiredEnsembleWithMatchingSuffix();
             default -> throw new IllegalArgumentException("Unhandled pred " + pred);
-        }
+        };
         // the initial result set does NOT CHANGE upon second read!
         Assertions.assertThat(Stuff.sortById(result1)).isEqualTo(Stuff.sortById(expected));
         Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expected));
@@ -257,9 +250,9 @@ public class TestElicitingPhantomReads {
         // ... but n H2, Phantom Reads already disappear at isolation level READ_COMMITTED. Thus:
         Set<Isol> unsoundIsols = new HashSet<>(List.of(Isol.READ_UNCOMMITTED, Isol.READ_COMMITTED));
         List<Arguments> res = new ArrayList<>();
-        for (Isol isol : Isol.values()) {
+        for (Isol isol : List.of(Isol.READ_UNCOMMITTED, Isol.READ_COMMITTED, Isol.REPEATABLE_READ, Isol.SERIALIZABLE, Isol.SNAPSHOT)) {
             for (Op op : List.of(Op.Insert, Op.Delete, Op.UpdateIntoPredicateSet, Op.UpdateOutOfPredicateSet)) {
-                for (PhantomicPredicate pred : PhantomicPredicate.values()) {
+                for (PhantomicPredicate pred : List.of(PhantomicPredicate.ByEnsemble, PhantomicPredicate.ByPayload, PhantomicPredicate.ByEnsembleAndPayload)) {
                     Expected expected = unsoundIsols.contains(isol) ? Expected.PhantomRead : Expected.Soundness;
                     res.add(Arguments.of(isol, op, pred, expected));
                 }

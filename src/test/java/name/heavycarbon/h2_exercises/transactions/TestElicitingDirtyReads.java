@@ -2,18 +2,12 @@ package name.heavycarbon.h2_exercises.transactions;
 
 import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainerAbstract.Op;
-import name.heavycarbon.h2_exercises.transactions.common.SetupForDirtyAndNonRepeatableRead;
+import name.heavycarbon.h2_exercises.transactions.common.Setup_DirtyAndNonRepeatableRead;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
-import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway_Throwing;
-import name.heavycarbon.h2_exercises.transactions.db.Db;
+import name.heavycarbon.h2_exercises.transactions.db.*;
 import name.heavycarbon.h2_exercises.transactions.db.Db.AutoIncrementing;
 import name.heavycarbon.h2_exercises.transactions.db.Db.CleanupFirst;
-import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
-import name.heavycarbon.h2_exercises.transactions.db.Stuff;
-import name.heavycarbon.h2_exercises.transactions.db.StuffId;
 import name.heavycarbon.h2_exercises.transactions.dirty_read.AgentContainer_DirtyRead;
-import name.heavycarbon.h2_exercises.transactions.db.Isol;
-import name.heavycarbon.h2_exercises.transactions.db.SessionManip;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -39,7 +33,7 @@ import java.util.stream.Stream;
 
 @Slf4j
 @AutoConfigureJdbc
-@SpringBootTest(classes = {Db.class, SessionManip.class, TransactionalGateway.class, TransactionalGateway_Throwing.class})
+@SpringBootTest(classes = {Db.class, SessionManip.class, TransactionalGateway.class})
 public class TestElicitingDirtyReads {
 
     private enum Expected {Soundness, DirtyRead}
@@ -50,9 +44,6 @@ public class TestElicitingDirtyReads {
 
     @Autowired
     private Db db;
-
-    @Autowired
-    private TransactionalGateway_Throwing txGw_throwing;
 
     @Autowired
     private TransactionalGateway txGw;
@@ -89,8 +80,8 @@ public class TestElicitingDirtyReads {
     @MethodSource("provideTestArgStream")
     void testDirtyRead(@NotNull Isol isol, @NotNull Op op, @NotNull Expected expected) {
         setupDb();
-        final SetupForDirtyAndNonRepeatableRead mods = new SetupForDirtyAndNonRepeatableRead(initRow, updateRow, insertRow, deleteRow);
-        final var ac = new AgentContainer_DirtyRead(db, isol, op, mods, txGw_throwing, txGw);
+        final Setup_DirtyAndNonRepeatableRead mods = new Setup_DirtyAndNonRepeatableRead(initRow, updateRow, insertRow, deleteRow);
+        final var ac = new AgentContainer_DirtyRead(db, isol, op, mods, txGw);
         {
             ac.startAll();
             ac.joinAll();
@@ -99,56 +90,38 @@ public class TestElicitingDirtyReads {
         Assertions.assertThat(ac.isAnyThreadTerminatedBadly()).isFalse();
         // Result exist
         Assertions.assertThat(ac.getReaderRunnable().getResult()).isPresent();
-        List<Stuff> result = ac.getReaderRunnable().getResult().orElseThrow().getResult();
+        List<Stuff> result = ac.getReaderRunnable().getResult().orElseThrow();
         switch (expected) {
-            case DirtyRead -> {
-                expectDirtyRead(op, result);
-            }
-            case Soundness -> {
-                expectSoundness(op, result);
-            }
+            case DirtyRead -> expectDirtyRead(op, result);
+            case Soundness -> expectSoundness(op, result);
         }
         finallyExpectNoChangesBecauseModifierRolledBack();
         log.info("OK: Dirty Read, isolation level {}, operation {}, expected {}", isol, op, expected);
     }
 
     private void expectSoundness(@NotNull Op op, @NotNull List<Stuff> result) {
-        List<Stuff> expectedStuff;
-        switch (op) {
-            case Update -> {
-                // we did not see any updates, only the "initial row" (selection was by id)
-                expectedStuff = List.of(initRow);
-            }
-            case Delete -> {
-                // the row to delete was not missing (selection was by id)
-                expectedStuff = List.of(deleteRow);
-            }
-            case Insert -> {
-                // the inserted row was not yet there (selection was by id)
-                expectedStuff = List.of();
-            }
+        List<Stuff> expectedStuff = switch (op) {
+            // we did not see any updates, only the "initial row" (selection was by id)
+            case Update -> List.of(initRow);
+            // the row to delete was not missing (selection was by id)
+            case Delete -> List.of(deleteRow);
+            // the inserted row was not yet there (selection was by id)
+            case Insert -> List.of();
             default -> throw new IllegalArgumentException("Unhandled op " + op);
-        }
+        };
         Assertions.assertThat(result).isEqualTo(expectedStuff);
     }
 
     private void expectDirtyRead(@NotNull Op op, @NotNull List<Stuff> result) {
-        List<Stuff> expectedStuff;
-        switch (op) {
-            case Update -> {
-                // we saw the updated but uncommitted row (selection was by id)
-                expectedStuff = List.of(updateRow);
-            }
-            case Delete -> {
-                // the "deleted" but uncommitted row was indeed missing (selection was by id)
-                expectedStuff = List.of();
-            }
-            case Insert -> {
-                // we saw the inserted but uncommitted row (selection was by id)
-                expectedStuff = List.of(insertRow);
-            }
+        List<Stuff> expectedStuff = switch (op) {
+            // we saw the updated but uncommitted row (selection was by id)
+            case Update -> List.of(updateRow);
+            // the "deleted" but uncommitted row was indeed missing (selection was by id)
+            case Delete -> List.of();
+            // we saw the inserted but uncommitted row (selection was by id)
+            case Insert -> List.of(insertRow);
             default -> throw new IllegalArgumentException("Unhandled op " + op);
-        }
+        };
         Assertions.assertThat(result).isEqualTo(expectedStuff);
     }
 
