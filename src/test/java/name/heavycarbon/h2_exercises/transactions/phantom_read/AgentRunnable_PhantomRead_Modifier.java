@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
-import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableSyncOnAppStateInsideTransaction;
+import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableWithAllActionsInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
@@ -13,18 +13,18 @@ import name.heavycarbon.h2_exercises.transactions.db.StuffId;
 import org.jetbrains.annotations.NotNull;
 
 @Slf4j
-public class ModifierRunnable_PhantomRead extends AgentRunnableSyncOnAppStateInsideTransaction {
+public class AgentRunnable_PhantomRead_Modifier extends AgentRunnableWithAllActionsInsideTransaction {
 
-    private final Setup_PhantomRead setup;
+    private final Setup setup;
 
-    public ModifierRunnable_PhantomRead(@NotNull Db db,
-                                        @NotNull AppState appState,
-                                        @NotNull AgentId agentId,
-                                        @NotNull Isol isol,
-                                        @NotNull Op op,
-                                        @NotNull Setup_PhantomRead setup,
-                                        @NotNull TransactionalGateway txGw) {
-        super(db, appState, agentId, isol, op, txGw);
+    public AgentRunnable_PhantomRead_Modifier(@NotNull Db db,
+                                              @NotNull AppState appState,
+                                              @NotNull AgentId agentId,
+                                              @NotNull Isol isol,
+                                              @NotNull Op op,
+                                              @NotNull Setup setup,
+                                              @NotNull TransactionalGateway txGw) {
+        super(db, appState, agentId, isol, op, PrintException.No, txGw);
         this.setup = setup;
     }
 

@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
-import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableSyncOnAppStateInsideTransaction;
+import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableWithAllActionsInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
@@ -16,28 +16,27 @@ import java.time.Duration;
 import java.time.Instant;
 
 @Slf4j
-public class Runnable_Bravo extends AgentRunnableSyncOnAppStateInsideTransaction {
+public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransaction {
 
     private final @NotNull Setup setup;
 
     @Getter
     private Exception exceptionSeen = null;
 
-    public Runnable_Bravo(@NotNull Db db,
-                          @NotNull AppState appState,
-                          @NotNull AgentId agentId,
-                          @NotNull Isol isol,
-                          @NotNull Setup setup,
-                          @NotNull TransactionalGateway txGw) {
-        super(db, appState, agentId, isol, AgentContainer.Op.Unset, txGw);
-        this.setup = setup;
-    }
-
     @Getter
     private Stuff asSeenInState3;
 
+    public AgentRunnable_Bravo(@NotNull Db db,
+                               @NotNull AppState appState,
+                               @NotNull AgentId agentId,
+                               @NotNull Isol isol,
+                               @NotNull Setup setup,
+                               @NotNull TransactionalGateway txGw) {
+        super(db, appState, agentId, isol, AgentContainer.Op.Unset, PrintException.No, txGw);
+        this.setup = setup;
+    }
+
     protected void switchByAppState() throws InterruptedException {
-        log.info("{} now working in state {}", getAgentId(), getAppState());
         switch (getAppState().get()) {
             case 1 -> {
                 getDb().updatePayloadById(setup.stuff_b().getId(), "BRAVO WAS HERE");
@@ -48,7 +47,7 @@ public class Runnable_Bravo extends AgentRunnableSyncOnAppStateInsideTransaction
                 // increment state immediately so that "alfa" can actually continue when this thread dies
                 incState();
                 updatePayloadByIdExpectingException();
-                log.info("{} did not end with an exception!?", getAgentId());
+                log.info("'{}' did not end with an exception!?", getAgentId());
                 setTerminatedNicely();
                 setStop();
             }
@@ -84,7 +83,7 @@ public class Runnable_Bravo extends AgentRunnableSyncOnAppStateInsideTransaction
         } catch (Exception ex) {
             this.exceptionSeen = ex;
             long ms = Duration.between(whenStarted, Instant.now()).toMillis();
-            log.info("{} got exception '{}' after waiting for {} ms.", getAgentId(), ex.getClass().getName(), ms);
+            log.info("'{}' got exception '{}' after waiting for {} ms.", getAgentId(), ex.getClass().getName(), ms);
             throw ex;
         }
     }

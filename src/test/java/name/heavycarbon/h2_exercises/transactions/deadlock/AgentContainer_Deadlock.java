@@ -1,4 +1,4 @@
-package name.heavycarbon.h2_exercises.transactions.sql_timeout;
+package name.heavycarbon.h2_exercises.transactions.deadlock;
 
 import name.heavycarbon.h2_exercises.transactions.agent.Agent;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer;
@@ -11,13 +11,13 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-public class AgentContainer_SqlTimeout extends AgentContainer {
+public class AgentContainer_Deadlock extends AgentContainer {
 
     private final AgentId alfaId = new AgentId("alfa");
     private final AgentId bravoId = new AgentId("bravo");
     private final AppState appState = new AppState();
 
-    public AgentContainer_SqlTimeout(
+    public AgentContainer_Deadlock(
             @NotNull Db db,
             @NotNull Isol isol,
             @NotNull Setup setup,
@@ -34,4 +34,5 @@ public class AgentContainer_SqlTimeout extends AgentContainer {
     public AgentRunnable_Bravo getBravo() {
         return (AgentRunnable_Bravo) (super.get(bravoId).getRunnable());
     }
+
 }

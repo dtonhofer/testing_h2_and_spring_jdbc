@@ -53,9 +53,9 @@ public class TransactionalGateway {
     // Java create the Runnable by using "functional interface" notation.
     // ---
 
-    @Transactional(rollbackFor = { MyRollbackException.class })
-    public void wrapIntoTransaction(@NotNull ThrowingRunnable runnable, @NotNull AgentId agentId, @NotNull Isol isol) throws MyRollbackException {
-        log.info("{} in transaction. Setting isolation level {}", agentId, isol);
+    @Transactional(rollbackFor = { MyRollbackException.class, InterruptedException.class })
+    public void wrapIntoTransaction(@NotNull ThrowingRunnable runnable, @NotNull AgentId agentId, @NotNull Isol isol) throws MyRollbackException, InterruptedException {
+        log.info("'{}' in transaction. Setting {}", agentId, isol);
         sm.setMySessionIsolationLevel(isol);
         runnable.run();
     }

@@ -176,7 +176,7 @@ public abstract class AgentRunnable implements Runnable {
     // outside the package, so public!
 
     protected String finalMessage(boolean interrupted) {
-        return agentId + " terminating. stop: " + stop + ", interrupted: " + interrupted + ", bad threads: " + isAnyThreadTerminatedBadly();
+        return "'" + agentId + "' terminating. stop = " + stop + ", interrupted = " + interrupted + ", bad threads = " + isAnyThreadTerminatedBadly();
     }
 
     public enum PrintException {Yes, No}

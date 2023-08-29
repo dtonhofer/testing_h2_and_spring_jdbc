@@ -23,19 +23,19 @@ public class AgentContainer_DirtyRead extends AgentContainer {
             @NotNull Op op,
             @NotNull Setup setup,
             @NotNull TransactionalGateway txGw) {
-        final var mr = new ModifierRunnable_DirtyRead(db, appState, modifierId, isol, op, setup, txGw);
-        final var rr = new ReaderRunnable_DirtyRead(db, appState, readerId, isol, op, setup, txGw);
+        final var mr = new AgentRunnable_DirtyRead_Modifier(db, appState, modifierId, isol, op, setup, txGw);
+        final var rr = new AgentRunnable_DirtyRead_Reader(db, appState, readerId, isol, op, setup, txGw);
         setUnmodifiableAgentMap(List.of(new Agent(mr), new Agent(rr)));
     }
 
-    public @NotNull ReaderRunnable_DirtyRead getReaderRunnable() {
+    public @NotNull AgentRunnable_DirtyRead_Reader getReaderRunnable() {
         // Too much effort to make the get typesafe, just cast!
-        return (ReaderRunnable_DirtyRead) (get(readerId).getRunnable());
+        return (AgentRunnable_DirtyRead_Reader) (get(readerId).getRunnable());
     }
 
-    public @NotNull ModifierRunnable_DirtyRead getModifierRunnable() {
+    public @NotNull AgentRunnable_DirtyRead_Modifier getModifierRunnable() {
         // Too much effort to make the get typesafe, just cast!
-        return (ModifierRunnable_DirtyRead) (get(modifierId).getRunnable());
+        return (AgentRunnable_DirtyRead_Modifier) (get(modifierId).getRunnable());
     }
 
 }

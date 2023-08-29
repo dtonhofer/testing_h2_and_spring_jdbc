@@ -23,14 +23,14 @@ public class AgentContainer_NonRepeatableRead extends AgentContainer {
             @NotNull Op op,
             @NotNull Setup setup,
             @NotNull TransactionalGateway txGw) {
-        final var mr = new ModifierRunnable_NonRepeatableRead(db, appState, modifierId, isol, op, setup, txGw);
-        final var rr = new ReaderRunnable_NonRepeatableRead(db, appState, readerId, isol, op, setup, txGw);
+        final var mr = new AgentRunnable_NonRepeatableRead_Modifier(db, appState, modifierId, isol, op, setup, txGw);
+        final var rr = new AgentRunnable_NonRepeatableRead_Reader(db, appState, readerId, isol, op, setup, txGw);
         setUnmodifiableAgentMap(List.of(new Agent(mr), new Agent(rr)));
     }
 
-    public @NotNull ReaderRunnable_NonRepeatableRead getReaderRunnable() {
+    public @NotNull AgentRunnable_NonRepeatableRead_Reader getReaderRunnable() {
         // Too much effort to make the get typesafe, just cast!
-        return (ReaderRunnable_NonRepeatableRead) (get(readerId).getRunnable());
+        return (AgentRunnable_NonRepeatableRead_Reader) (get(readerId).getRunnable());
     }
 
 }

@@ -8,6 +8,6 @@ import name.heavycarbon.h2_exercises.transactions.agent.MyRollbackException;
 @FunctionalInterface
 public interface ThrowingRunnable {
 
-    void run() throws MyRollbackException;
+    void run() throws MyRollbackException, InterruptedException;
 
 }

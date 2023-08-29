@@ -3,8 +3,8 @@ package name.heavycarbon.h2_exercises.transactions;
 import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.*;
-import name.heavycarbon.h2_exercises.transactions.sql_timeout.AgentContainer_SqlTimeout;
-import name.heavycarbon.h2_exercises.transactions.sql_timeout.Setup;
+import name.heavycarbon.h2_exercises.transactions.deadlock.AgentContainer_Deadlock;
+import name.heavycarbon.h2_exercises.transactions.deadlock.Setup;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -21,7 +21,7 @@ import java.util.stream.Stream;
 @Slf4j
 @AutoConfigureJdbc
 @SpringBootTest(classes = {Db.class, SessionManip.class, TransactionalGateway.class})
-public class TestElicitingSqlTimeout {
+public class TestElicitingDeadlock {
 
     // Spring does its autowiring magic here.
 
@@ -51,33 +51,37 @@ public class TestElicitingSqlTimeout {
 
     @ParameterizedTest
     @MethodSource("provideTestArgStream")
-    void testSqlTimeoutException(@NotNull Isol isol) {
+    void testDeadlock(@NotNull Isol isol) {
         setupDb();
-        final var ac = new AgentContainer_SqlTimeout(db, isol, new Setup(stuff_a, stuff_b, stuff_x), txGw);
+        final var ac = new AgentContainer_Deadlock(db, isol, new Setup(stuff_a, stuff_b, stuff_x), txGw);
         {
             ac.startAll();
             ac.joinAll();
         }
-        if (isol == Isol.READ_UNCOMMITTED) {
-            // Bravo read the X as updated by Alfa
-            Assertions.assertThat(ac.getBravo().getAsSeenInState3()).isEqualTo(stuff_x.with("UPDATED BY ALFA"));
+        if (isol == Isol.READ_UNCOMMITTED || isol == Isol.READ_COMMITTED) {
+            // There is no problem!
+            Assertions.assertThat(ac.isAnyThreadTerminatedBadly()).isFalse();
+            // Bravo committed
+            Assertions.assertThat(db.readById(stuff_b.getId()).orElseThrow().getPayload()).isEqualTo("BRAVO WAS HERE");
+            // Bravo won writing X
+            Assertions.assertThat(db.readById(stuff_x.getId()).orElseThrow().getPayload()).isEqualTo("UPDATED BY BRAVO");
+            Assertions.assertThat(ac.getBravo().getAsSeenInState2()).isEqualTo(stuff_x);
+            Assertions.assertThat(ac.getBravo().getAsSeenInState5()).isEqualTo(stuff_x.with("UPDATED BY ALFA"));
         }
         else {
-            // Bravo read the X that existed of the start of transaction
-            Assertions.assertThat(ac.getBravo().getAsSeenInState3()).isEqualTo(stuff_x);
+            // Bad things happened!
+            Assertions.assertThat(ac.isAnyThreadTerminatedBadly()).isTrue();
+            // Bravo was rolled back, so its marker B is untouched
+            Assertions.assertThat(db.readById(stuff_b.getId()).orElseThrow().getPayload()).isEqualTo("---");
+            // Alfa won writing X
+            Assertions.assertThat(db.readById(stuff_x.getId()).orElseThrow().getPayload()).isEqualTo("UPDATED BY ALFA");
+            Assertions.assertThat(ac.getBravo().getAsSeenInState2()).isEqualTo(stuff_x);
+            Assertions.assertThat(ac.getBravo().getAsSeenInState5()).isEqualTo(stuff_x);
+            Assertions.assertThat(ac.getBravo().getExceptionSeen()).isInstanceOf(org.springframework.dao.CannotAcquireLockException.class);
         }
-        Assertions.assertThat(ac.isAnyThreadTerminatedBadly()).isTrue();
-        // Alfa wrote its marker A
+        // Alfa wrote its marker A in all cases
         Assertions.assertThat(db.readById(stuff_a.getId()).orElseThrow().getPayload()).isEqualTo("ALFA WAS HERE");
-        // Bravo was rolled back, so its marker B is untouched
-        Assertions.assertThat(db.readById(stuff_b.getId()).orElseThrow().getPayload()).isEqualTo("---");
-        // Alfa won writing X
-        Assertions.assertThat(db.readById(stuff_x.getId()).orElseThrow().getPayload()).isEqualTo("UPDATED BY ALFA");
-        // Found an "org.springframework.dao.QueryTimeoutException" at the JDBC level
-        // TODO : Which is however transformed into an "org.springframework.transaction.TransactionSystemException"
-        // TODO: at the @Transaction level due to inability of Spring to "translate" "org.h2.jdbc.JdbcSQLTimeoutException"
-        // TODO: Can one fix that?
-        Assertions.assertThat(ac.getBravo().getExceptionSeen()).isInstanceOf(org.springframework.dao.QueryTimeoutException.class);
+
     }
 
     private static Stream<Arguments> provideTestArgStream() {

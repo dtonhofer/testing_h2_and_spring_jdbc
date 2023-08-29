@@ -9,7 +9,7 @@ import name.heavycarbon.h2_exercises.transactions.db.SessionManip;
 import name.heavycarbon.h2_exercises.transactions.db.Stuff;
 import name.heavycarbon.h2_exercises.transactions.phantom_read.AgentContainer_PhantomRead;
 import name.heavycarbon.h2_exercises.transactions.phantom_read.AgentContainer_PhantomRead.PhantomicPredicate;
-import name.heavycarbon.h2_exercises.transactions.phantom_read.Setup_PhantomRead;
+import name.heavycarbon.h2_exercises.transactions.phantom_read.Setup;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -54,7 +54,7 @@ public class TestElicitingPhantomReads {
     // Configuration about what to insert, delete, update
     // ---
 
-    private final Setup_PhantomRead setup = new Setup_PhantomRead();
+    private final Setup setup = new Setup();
 
     // ---
 

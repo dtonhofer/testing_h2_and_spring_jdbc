@@ -90,12 +90,8 @@ public class TestElicitingNonRepeatableReads {
         List<Stuff> result1 = ac.getReaderRunnable().getResult().orElseThrow().getResult1();
         List<Stuff> result2 = ac.getReaderRunnable().getResult().orElseThrow().getResult2();
         switch (expected) {
-            case NonRepeatableRead -> {
-                expectNonRepeatableRead(op, result1, result2);
-            }
-            case Soundness -> {
-                expectSoundness(op, result1, result2);
-            }
+            case NonRepeatableRead -> expectNonRepeatableRead(op, result1, result2);
+            case Soundness -> expectSoundness(op, result1, result2);
         }
         finallyExpectWhatTheModifierDid(op);
         log.info("OK: Non-Repeatable Read, isolation level {}, operation {}, expected {}", isol, op, expected);
@@ -128,44 +124,30 @@ public class TestElicitingNonRepeatableReads {
 
     private void expectSoundness(@NotNull Op op, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2) {
         // we just see what's initially there and nothing changes during the transaction
-        List<Stuff> expectedStuff;
-        switch (op) {
-            case Update -> {
-                // "initRow" was updated but none of that was visible (selection by id)
-                expectedStuff = List.of(initRow);
-            }
-            case Insert -> {
-                // "insertRow" was inserted but none of that was visible (selection by id)
-                expectedStuff = List.of();
-            }
-            case Delete -> {
-                // "deleteRow" was deleted but none of that was visible (selection by id)
-                expectedStuff = List.of(deleteRow);
-            }
+        List<Stuff> expectedStuff = switch (op) {
+            // "initRow" was updated but none of that was visible (selection by id)
+            case Update -> List.of(initRow);
+            // "insertRow" was inserted but none of that was visible (selection by id)
+            case Insert -> List.of();
+            // "deleteRow" was deleted but none of that was visible (selection by id)
+            case Delete -> List.of(deleteRow);
             default -> throw new IllegalArgumentException("Unhandled op " + op);
-        }
+        };
         Assertions.assertThat(Stuff.sortById(result1)).isEqualTo(Stuff.sortById(expectedStuff));
         Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff));
     }
 
     private void finallyExpectWhatTheModifierDid(@NotNull Op op) {
         List<Stuff> actualStuff = db.readAll();
-        List<Stuff> expectedStuff;
-        switch (op) {
-            case Update -> {
-                // "initRow" was updated to "updateRow"
-                expectedStuff = List.of(updateRow, deleteRow);
-            }
-            case Insert -> {
-                // "insertRow" was inserted
-                expectedStuff = List.of(initRow, deleteRow, insertRow);
-            }
-            case Delete -> {
-                // "deleteRow" was deleted
-                expectedStuff = List.of(initRow);
-            }
+        List<Stuff> expectedStuff = switch (op) {
+            // "initRow" was updated to "updateRow"
+            case Update -> expectedStuff = List.of(updateRow, deleteRow);
+            // "insertRow" was inserted
+            case Insert -> expectedStuff = List.of(initRow, deleteRow, insertRow);
+            // "deleteRow" was deleted
+            case Delete -> expectedStuff = List.of(initRow);
             default -> throw new IllegalArgumentException("Unhandled op " + op);
-        }
+        };
         Assertions.assertThat(Stuff.sortById(actualStuff)).isEqualTo(Stuff.sortById(expectedStuff));
     }
 

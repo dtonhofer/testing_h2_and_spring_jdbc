@@ -24,16 +24,16 @@ public class AgentContainer_PhantomRead extends AgentContainer {
             @NotNull Isol isol,
             @NotNull Op op,
             @NotNull PhantomicPredicate phantomicPredicate,
-            @NotNull Setup_PhantomRead setup,
+            @NotNull Setup setup,
             @NotNull TransactionalGateway txGw) {
-        final var mr = new ModifierRunnable_PhantomRead(db, appState, modifierId, isol, op, setup, txGw);
-        final var rr = new ReaderRunnable_PhantomRead(db, appState, readerId, isol, op, phantomicPredicate, setup, txGw);
+        final var mr = new AgentRunnable_PhantomRead_Modifier(db, appState, modifierId, isol, op, setup, txGw);
+        final var rr = new AgentRunnable_PhantomRead_Reader(db, appState, readerId, isol, op, phantomicPredicate, setup, txGw);
         setUnmodifiableAgentMap(List.of(new Agent(mr), new Agent(rr)));
     }
 
-    public @NotNull ReaderRunnable_PhantomRead getReaderRunnable() {
+    public @NotNull AgentRunnable_PhantomRead_Reader getReaderRunnable() {
         // Too much effort to make the get typesafe, just cast!
-        return (ReaderRunnable_PhantomRead) (get(readerId).getRunnable());
+        return (AgentRunnable_PhantomRead_Reader) (get(readerId).getRunnable());
     }
 
 }

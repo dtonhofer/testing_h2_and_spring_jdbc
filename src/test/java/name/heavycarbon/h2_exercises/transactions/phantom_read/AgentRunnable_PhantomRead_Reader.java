@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
-import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableSyncOnAppStateInsideTransaction;
+import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableWithAllActionsInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Slf4j
-public class ReaderRunnable_PhantomRead extends AgentRunnableSyncOnAppStateInsideTransaction {
+public class AgentRunnable_PhantomRead_Reader extends AgentRunnableWithAllActionsInsideTransaction {
 
     // Store the result of reading here so that the main thread can pick it up
 
@@ -25,7 +25,7 @@ public class ReaderRunnable_PhantomRead extends AgentRunnableSyncOnAppStateInsid
 
     // Instructions what to modify inside the modifying transaction
 
-    private final @NotNull Setup_PhantomRead setup;
+    private final @NotNull Setup setup;
 
     // Additional indication on what to do during reading
 
@@ -33,15 +33,15 @@ public class ReaderRunnable_PhantomRead extends AgentRunnableSyncOnAppStateInsid
 
     // ---
 
-    public ReaderRunnable_PhantomRead(@NotNull Db db,
-                                      @NotNull AppState appState,
-                                      @NotNull AgentId agentId,
-                                      @NotNull Isol isol,
-                                      @NotNull Op op,
-                                      @NotNull PhantomicPredicate phantomicPredicate,
-                                      @NotNull Setup_PhantomRead setup,
-                                      @NotNull TransactionalGateway txGw) {
-        super(db, appState, agentId, isol, op, txGw);
+    public AgentRunnable_PhantomRead_Reader(@NotNull Db db,
+                                            @NotNull AppState appState,
+                                            @NotNull AgentId agentId,
+                                            @NotNull Isol isol,
+                                            @NotNull Op op,
+                                            @NotNull PhantomicPredicate phantomicPredicate,
+                                            @NotNull Setup setup,
+                                            @NotNull TransactionalGateway txGw) {
+        super(db, appState, agentId, isol, op, PrintException.No, txGw);
         this.phantomicPredicate = phantomicPredicate;
         this.setup = setup;
     }
