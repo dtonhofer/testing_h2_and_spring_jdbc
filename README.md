@@ -99,3 +99,30 @@ To illustrate what is happening in a particular test case, we will use swimlane 
 
 Also available as [GraphML](https://en.wikipedia.org/wiki/GraphML) file: [swml_key.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_key.graphml).
 
+Note that in all case, the transactions are running on the same isolation level. In any case, H2 does not allow sessions with different isolation levels.
+
+### Test 1: Eliciting "Dirty Reads"
+
+[TestElicitingDirtyReads.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDirtyReads.java)
+
+A "dirty read" happens when transaction T2 can read data written by, but not yet committed by, transaction T1. This unsoundness is supposed 
+to go away at isolation level ANSI READ COMMITTED and stronger, and it does!
+
+We test the following scenarios:
+
+In all cases, transaction T1 is the "modifier", transaction T2 is the "reader".
+
+- UPDATE: T1 updates an existing data item D (action 0). After that, T2 can get the value of the update from D even though T1 is still active. This
+  is undesirable irrespective of whether T1 eventually rolls back (then T2 has read something that never existed) or commits (then T2 has read something
+  "from the future" which can lead to arbitrary problems. T1 may also update D a second time for example).
+- INSERT: T1 inserts new data item D (action 0). After that, T2 sees D even though T1 is still active.
+- DELETE: T1 deletes an existing data item D (action 0). After that, T2 can no longer access D even though T1 is still active.
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_dirty_read.png" alt="Dirty Read swimlanes" width="600" />
+
+GraphML file: [swml_dirty_read.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_dirty_read.graphml)
+
+Result: Everything is as expected. All three scenarios show up in isolation level ANSI READ UNCOMMITTED only.
+
+### Test 2: Eliciting "Non-Repeatable Reads"
+
