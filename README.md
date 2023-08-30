@@ -115,11 +115,15 @@ This unsoundness is supposed to go away at isolation level ANSI "READ COMMITTED"
 
 Taking a "data item" to be a record identified by a fixed identifier, we test the following scenarios:
 
-- UPDATE: T1 updates an existing data item D with x in action 0. After that, T2 can read the value x from D even though T1 is still active. This
-  is undesirable irrespective of whether T1 eventually rolls back (then T2 has read something that never existed) or commits (then T2 has read something
-  "from the future" which can lead to arbitrary problems. T1 may also update D a second time with z for example).
-- INSERT: T1 inserts new data item D in action 0. After that, T2 sees D even though T1 is still active.
-- DELETE: T1 deletes an existing data item D (considered as writing ε to D) in action 0. After that, T2 can no longer access D (a read yields ε) even though T1 is still active.
+- UPDATE: T1 updates an existing data item D with x in action 0.
+  After that, T2 can read the value x from D even though T1 is still active.
+  This is undesirable irrespective of whether T1 eventually rolls back (then T2 has
+  read something that never existed) or commits (then T2 has read something "from the future" which can lead to arbitrary problems.
+  T1 may also update D a second time with z for example).
+- INSERT: T1 inserts new data item D in action 0.
+  After that, T2 sees D even though T1 is still active.
+- DELETE: T1 deletes an existing data item D (considered as writing ε to D) in action 0.
+  After that, T2 can no longer access D (a read yields ε) even though T1 is still active.
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_dirty_read.png" alt="Dirty Read swimlanes" width="600" />
 
@@ -137,9 +141,15 @@ This unsoundness is supposed to go away at isolation level ANSI "REPEATABLE READ
 
 Taking a "data item" to be a record identified by a fixed identifier, we test the following scenarios:
 
-- UPDATE: T2 reads D in action 0, finding x. In action 1, T1 then updates D to y and commits. T2 then re-reads D and find it has unexpectedly changed, i.e. it obtains y instead of x.
-- INSERT: T2 reads D in action 0, and finds it does not exist i.e. it obtains ε. In action 1, T1 then creates D with value y and commits. T2 then re-reads D and find it is unexpectedly present with value y.
-- DELETE: T2 reads D in action 0, finding x. In action 1, T1 then deletes D (considered as writing ε to D) and commits. T2 then re-reads D and find it is unexpectedly gone, i.e. it obtains ε.
+- UPDATE: T2 reads D in action 0, finding x.
+  Then, in action 1, T1 updates D to y and commits.
+  T2 then re-reads D and find it has unexpectedly changed, i.e. it obtains y instead of x.i
+- INSERT: T2 reads D in action 0, and finds it does not exist i.e. it obtains ε.
+  Then, in action 1, T1 creates D with value y and commits.
+  T2 then re-reads D and find it is unexpectedly present with value y.
+- DELETE: T2 reads D in action 0, finding x.
+  Then, in action 1, T1 then deletes D (considered as writing ε to D) and commits.
+  T2 then re-reads D and find it is unexpectedly gone, i.e. it obtains ε.
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_non_repeatable_read.png" alt="Non-Repeatable Read swimlanes" width="600" />
 
@@ -163,4 +173,18 @@ already.
 
 This unsoundness is supposed to go away at isolation levels "SERIALIZABLE" and "SNAPSHOT".
 
+Taking a "data item" to be a record identified by a fixed identifier, we test the following scenarios:
+
+- UPDATE-INTO-PREDICATE and INSERT-INTO-PREDICATE: Ds:P grows due to an update of a record D previously outside of Ds:P resulting in it being in Ds:P.
+  T2 reads Ds:P in action 0, finding Xs.
+  In action 1, T1 then updates Ds:P to Xs ∪ Ys via an update or an insert, and commits.
+  T2 then re-reads Ds:P and find it has unexpectedly grown.
+- UPDATE-OUT-OF-PREDICATE and DELETE-FROM-PREDICATE: Ds:P shrinks due to an update of a record D previously inside of Ds:P resulting in it being outside of Ds:P.  
+  T2 reads Ds:P in action 0, finding Xs.
+  In action 1, T1 then updates Ds:P to Xs - Ys via an update or a delete, and commits.
+  T2 then re-reads Ds:P and find it has unexpectedly shrunk.
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_phantom_read.png" alt="Non-Repeatable Read swimlanes" width="600" />
+
+GraphML file: [swml_non_repeatable_read.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_phantom_read.graphml)
 
