@@ -130,8 +130,8 @@ GraphML file: [swml_dirty_read.graphml](https://github.com/dtonhofer/testing_h2_
 ### Test 2: Eliciting "Non-Repeatable Reads" (aka "Fuzzy Reads")
 
 A "non-repeatable read" (phenomenon "P2" in *A Critique of ANSI SQL Isolation Levels*) happens when transaction T2 (the "reader" transaction)
-reads data item D, obtaining value item x. Transaction T1 then updates D to y and commits. T2 then re-reads D and no longer finds the value x 
-seen earlier but the value y written by T1, i.e. data already collected for T2 may unexpectedly change during T2.
+reads data item D, obtaining value item x. Transaction T1 (the "modifier" transaction) then updates D to y and commits. T2 then re-reads D and no longer finds the value x 
+seen earlier but the value y written by T1, i.e. data entrained via reads into T2 may unexpectedly change during T2.
 
 This unsoundness is supposed to go away at isolation level ANSI "REPEATABLE READ" and stronger.
 
@@ -148,3 +148,19 @@ GraphML file: [swml_non_repeatable_read.graphml](https://github.com/dtonhofer/te
 **Result for H2**: Everything is as expected. All three scenarios show up in isolation level ANSI "READ UNCOMMITTED" and ANSI "READ COMMITTED" only.
 
 ### Test 3: Eliciting "Phantom Reads"
+
+A "phantom read" is a more hairy phenomenon as it involves result sets defined by predicates (hence the concept of a "predicate lock"). 
+
+A "phantom read" (phenomenon "P3" in *A Critique of ANSI SQL Isolation Levels*) happens when transaction T2 (the "reader" transaction)
+selects a set of data item using a predicate, obtaining the result Ds:P with value set Xs. Transaction T1 (the "modifier" transaction) then
+updates the database so that Ds:P is extended to some Xs ∪ Ys (or reduced to some Xs - Ys) and commits. T2 then re-reads Ds:P and no longer
+finds the value set Xs seen earlier but the value set Xs ∪ Ys (or Xs - Ys) written by T1, i.e. data entrained via predicate-based reads into T2
+may unexpectedly grow or shrink during T2.
+
+This are actually quite similar to "non-repeatable reads" and it is not immediately evident what the
+essential difference is. After all, if you select "by id" when trying to elicit a "non-repeatable read", you are really using a selection "predicate" 
+already.
+
+This unsoundness is supposed to go away at isolation levels "SERIALIZABLE" and "SNAPSHOT".
+
+
