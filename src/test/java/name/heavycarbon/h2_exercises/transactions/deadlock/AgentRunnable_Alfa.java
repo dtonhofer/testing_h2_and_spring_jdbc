@@ -110,7 +110,9 @@ public class AgentRunnable_Alfa extends AgentRunnable {
     protected void switchByAppStateInsideTransaction() throws InterruptedException {
         switch (getAppState().get()) {
             case 0 -> {
-                getDb().updatePayloadById(setup.stuff_a().getId(), "ALFA WAS HERE");
+                if (setup.withMarkers()) {
+                    getDb().updatePayloadById(setup.stuff_a().getId(), "ALFA WAS HERE");
+                }
                 incState();
             }
             case 3 -> {

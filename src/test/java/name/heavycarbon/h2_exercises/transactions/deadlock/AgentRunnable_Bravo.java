@@ -24,10 +24,10 @@ public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransa
     private Exception exceptionSeen = null;
 
     @Getter
-    private Stuff asSeenInState2;
+    private Stuff readInState2;
 
     @Getter
-    private Stuff asSeenInState5;
+    private Stuff readInState5;
 
     public AgentRunnable_Bravo(@NotNull Db db,
                                @NotNull AppState appState,
@@ -42,17 +42,25 @@ public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransa
     protected void switchByAppState() throws InterruptedException {
         switch (getAppState().get()) {
             case 1 -> {
-                getDb().updatePayloadById(setup.stuff_b().getId(), "BRAVO WAS HERE");
+                if (setup.withMarkers()) {
+                    // agent Bravo writing a marker will create a deadlock
+                    getDb().updatePayloadById(setup.stuff_b().getId(), "BRAVO WAS HERE");
+                }
                 incState();
             }
             case 2 -> {
-                // reading is actually not necessary to elicit a deadlock
-                asSeenInState2 = getDb().readById(setup.stuff_x().getId()).orElseThrow();
+                if (setup.withReadingInState2()) {
+                    // agent Bravo reading in state 2 will create a deadlock
+                    readInState2 = getDb().readById(setup.stuff_x().getId()).orElseThrow();
+                }
                 incState();
             }
             case 5 -> {
                 // read again before updating to see whether our assumptions are right
-                asSeenInState5 = getDb().readById(setup.stuff_x().getId()).orElseThrow();
+                // whether this is done or not does not change whether a deadlock occurs
+                if (setup.withReadingInState5()) {
+                    readInState5 = getDb().readById(setup.stuff_x().getId()).orElseThrow();
+                }
                 updatePayloadByIdExpectingException();
                 log.info("'{}' did not end with an exception!?", getAgentId());
                 setTerminatedNicely();

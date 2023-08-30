@@ -52,8 +52,13 @@ public class TestElicitingDeadlock {
     @ParameterizedTest
     @MethodSource("provideTestArgStream")
     void testDeadlock(@NotNull Isol isol) {
+        // To create a deadlock, you need to have agent Bravo
+        // either "write the marker" or "read in state 2", or both
+        boolean withMarkers = false;
+        boolean withReadingInState2 = true;
+        boolean withReadingInState5 = true;
         setupDb();
-        final var ac = new AgentContainer_Deadlock(db, isol, new Setup(stuff_a, stuff_b, stuff_x), txGw);
+        final var ac = new AgentContainer_Deadlock(db, isol, new Setup(stuff_a, stuff_b, stuff_x, withMarkers, withReadingInState2, withReadingInState5), txGw);
         {
             ac.startAll();
             ac.joinAll();
@@ -61,27 +66,40 @@ public class TestElicitingDeadlock {
         if (isol == Isol.READ_UNCOMMITTED || isol == Isol.READ_COMMITTED) {
             // There is no problem!
             Assertions.assertThat(ac.isAnyThreadTerminatedBadly()).isFalse();
-            // Bravo committed
-            Assertions.assertThat(db.readById(stuff_b.getId()).orElseThrow().getPayload()).isEqualTo("BRAVO WAS HERE");
+            if (withMarkers) {
+                // Bravo committed and its marker B says as much
+                Assertions.assertThat(db.readById(stuff_b.getId()).orElseThrow().getPayload()).isEqualTo("BRAVO WAS HERE");
+            }
             // Bravo won writing X
             Assertions.assertThat(db.readById(stuff_x.getId()).orElseThrow().getPayload()).isEqualTo("UPDATED BY BRAVO");
-            Assertions.assertThat(ac.getBravo().getAsSeenInState2()).isEqualTo(stuff_x);
-            Assertions.assertThat(ac.getBravo().getAsSeenInState5()).isEqualTo(stuff_x.with("UPDATED BY ALFA"));
+            if (withReadingInState2) {
+                Assertions.assertThat(ac.getBravo().getReadInState2()).isEqualTo(stuff_x);
+            }
+            if (withReadingInState5) {
+                Assertions.assertThat(ac.getBravo().getReadInState5()).isEqualTo(stuff_x.with("UPDATED BY ALFA"));
+            }
         }
         else {
             // Bad things happened!
             Assertions.assertThat(ac.isAnyThreadTerminatedBadly()).isTrue();
-            // Bravo was rolled back, so its marker B is untouched
-            Assertions.assertThat(db.readById(stuff_b.getId()).orElseThrow().getPayload()).isEqualTo("---");
+            if (withMarkers) {
+                // Bravo was rolled back, so its marker B is untouched
+                Assertions.assertThat(db.readById(stuff_b.getId()).orElseThrow().getPayload()).isEqualTo("---");
+            }
             // Alfa won writing X
             Assertions.assertThat(db.readById(stuff_x.getId()).orElseThrow().getPayload()).isEqualTo("UPDATED BY ALFA");
-            Assertions.assertThat(ac.getBravo().getAsSeenInState2()).isEqualTo(stuff_x);
-            Assertions.assertThat(ac.getBravo().getAsSeenInState5()).isEqualTo(stuff_x);
+            if (withReadingInState2) {
+                Assertions.assertThat(ac.getBravo().getReadInState2()).isEqualTo(stuff_x);
+            }
+            if (withReadingInState5) {
+                Assertions.assertThat(ac.getBravo().getReadInState5()).isEqualTo(stuff_x);
+            }
             Assertions.assertThat(ac.getBravo().getExceptionSeen()).isInstanceOf(org.springframework.dao.CannotAcquireLockException.class);
         }
-        // Alfa wrote its marker A in all cases
-        Assertions.assertThat(db.readById(stuff_a.getId()).orElseThrow().getPayload()).isEqualTo("ALFA WAS HERE");
-
+        if (withMarkers) {
+            // Alfa wrote its marker A in all cases
+            Assertions.assertThat(db.readById(stuff_a.getId()).orElseThrow().getPayload()).isEqualTo("ALFA WAS HERE");
+        }
     }
 
     private static Stream<Arguments> provideTestArgStream() {
