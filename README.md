@@ -101,16 +101,19 @@ Also available as [GraphML](https://en.wikipedia.org/wiki/GraphML) file: [swml_k
 
 Note that in all case, the transactions are running on the same isolation level. In any case, H2 does not allow sessions with different isolation levels.
 
+For notation purposes, ε (epsilon) is considered to be "the empty datum". In that view, if you read a nonexistent data item D, you obtain ε. 
+If you write ε to a data item D, you erase it.
+
 ### Test 1: Eliciting "Dirty Reads"
 
 [TestElicitingDirtyReads.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDirtyReads.java)
 
-A "dirty read" happens when transaction T2 can read data written by, but not yet committed by, transaction T1. This unsoundness is supposed 
-to go away at isolation level ANSI READ COMMITTED and stronger, and it does!
+A "dirty read" (phenomenon "P1" in *A Critique of ANSI SQL Isolation Levels*) happens when transaction T2 (the "reader" transaction)
+can read data written by, but not yet committed by, transaction T1 (the "modifier" transaction). 
 
-We test the following scenarios:
+This unsoundness is supposed to go away at isolation level ANSI READ COMMITTED and stronger.
 
-In all cases, transaction T1 is the "modifier", transaction T2 is the "reader".
+Taking a "data item" to be a record identified by a fixed identifier, we test the following scenarios:
 
 - UPDATE: T1 updates an existing data item D (action 0). After that, T2 can get the value of the update from D even though T1 is still active. This
   is undesirable irrespective of whether T1 eventually rolls back (then T2 has read something that never existed) or commits (then T2 has read something
@@ -122,7 +125,25 @@ In all cases, transaction T1 is the "modifier", transaction T2 is the "reader".
 
 GraphML file: [swml_dirty_read.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_dirty_read.graphml)
 
-Result: Everything is as expected. All three scenarios show up in isolation level ANSI READ UNCOMMITTED only.
+**Result for H2**: Everything is as expected. All three scenarios show up in isolation level ANSI READ UNCOMMITTED only.
 
-### Test 2: Eliciting "Non-Repeatable Reads"
+### Test 2: Eliciting "Non-Repeatable Reads" (aka "Fuzzy Reads")
+
+A "non-repeatable read" (phenomenon "P2" in *A Critique of ANSI SQL Isolation Levels*) happens when transaction T2 (the "reader" transaction)
+reads data item D, obtaining value item x. Transaction T1 then updates D to y and commits. T2 then re-reads D and no longer finds the value x 
+seen earlier but the value y written by T1, i.e. data already collected for T2 may unexpectedly change during T2.
+
+This unsoundness is supposed to go away at isolation level ANSI REPEATABLE READ and stronger.
+
+Taking a "data item" to be a record identified by a fixed identifier, we test the following scenarios:
+
+- UPDATE: T2 reads D in action 0, finding x. In action 1, T1 then updates D to y and commits. T2 then re-reads D and find it has unexpectedly changed, i.e. it obtains y instead of x.
+- INSERT: T2 reads D in action 0, and finds it does not exist i.e. it obtains ε. In action 1, T1 then creates D with value y and commits. T2 then re-reads D and find it is unexpectedly present with value y.
+- DELETE: T2 reads D in action 0, finding x. In action 1, T1 then deletes D (considered as writing ε to D) and commits. T2 then re-reads D and find it is unexpectedly gone, i.e. it obtains ε.
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_non_repeatable_read.png" alt="Non-Repeatable Read swimlanes" width="600" />
+
+GraphML file: [swml_non_repeatable_read.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_non_repeatable_read.graphml)
+
+**Result for H2**: Everything is as expected. All three scenarios show up in isolation level ANSI READ UNCOMMITTED and ANSI READ COMMITTED only.
 
