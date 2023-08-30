@@ -115,21 +115,23 @@ This unsoundness is supposed to go away at isolation level ANSI "READ COMMITTED"
 
 Taking a "data item" to be a record identified by a fixed identifier, we test the following scenarios:
 
-- UPDATE: T1 updates an existing data item D with x in action 0.
+- **UPDATE**: T1 updates an existing data item D with x in action 0.
   After that, T2 can read the value x from D even though T1 is still active.
   This is undesirable irrespective of whether T1 eventually rolls back (then T2 has
   read something that never existed) or commits (then T2 has read something "from the future" which can lead to arbitrary problems.
   T1 may also update D a second time with z for example).
-- INSERT: T1 inserts new data item D in action 0.
+- **INSERT**: T1 inserts new data item D in action 0.
   After that, T2 sees D even though T1 is still active.
-- DELETE: T1 deletes an existing data item D (considered as writing ε to D) in action 0.
+- **DELETE**: T1 deletes an existing data item D (considered as writing ε to D) in action 0.
   After that, T2 can no longer access D (a read yields ε) even though T1 is still active.
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_dirty_read.png" alt="Dirty Read swimlanes" width="600" />
 
 GraphML file: [swml_dirty_read.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_dirty_read.graphml)
 
-**Result for H2**: Everything is as expected. All three scenarios show up in isolation level ANSI "READ UNCOMMITTED" only.
+**Result for H2**
+
+Everything is as expected. All three scenarios show up in isolation level ANSI "READ UNCOMMITTED" only.
 
 ### Test 2: Eliciting "Non-Repeatable Reads" (aka "Fuzzy Reads")
 
@@ -141,13 +143,13 @@ This unsoundness is supposed to go away at isolation level ANSI "REPEATABLE READ
 
 Taking a "data item" to be a record identified by a fixed identifier, we test the following scenarios:
 
-- UPDATE: T2 reads D in action 0, finding x.
+- **UPDATE**: T2 reads D in action 0, finding x.
   Then, in action 1, T1 updates D to y and commits.
   T2 then re-reads D and find it has unexpectedly changed, i.e. it obtains y instead of x.i
-- INSERT: T2 reads D in action 0, and finds it does not exist i.e. it obtains ε.
+- **INSERT**: T2 reads D in action 0, and finds it does not exist i.e. it obtains ε.
   Then, in action 1, T1 creates D with value y and commits.
   T2 then re-reads D and find it is unexpectedly present with value y.
-- DELETE: T2 reads D in action 0, finding x.
+- **DELETE**: T2 reads D in action 0, finding x.
   Then, in action 1, T1 then deletes D (considered as writing ε to D) and commits.
   T2 then re-reads D and find it is unexpectedly gone, i.e. it obtains ε.
 
@@ -155,9 +157,15 @@ Taking a "data item" to be a record identified by a fixed identifier, we test th
 
 GraphML file: [swml_non_repeatable_read.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_non_repeatable_read.graphml)
 
-**Result for H2**: Everything is as expected. All three scenarios show up in isolation level ANSI "READ UNCOMMITTED" and ANSI "READ COMMITTED" only.
+**Result for H2**
+
+All three scenarios show up in isolation level ANSI "READ UNCOMMITTED" and ANSI "READ COMMITTED" only.
+However, in level ANSI "READ COMMITTED", apparently randomly, in about ~0.17% of the cases, the anomaly is *not* observed. 
+So something is going on.
 
 ### Test 3: Eliciting "Phantom Reads"
+
+[TestElicitingPhantomReads.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingPhantomReads.java)
 
 A "phantom read" is a more hairy phenomenon as it involves result sets defined by predicates (hence the concept of a "predicate lock"). 
 
@@ -175,11 +183,11 @@ This unsoundness is supposed to go away at isolation levels "SERIALIZABLE" and "
 
 Taking a "data item" to be a record identified by a fixed identifier, we test the following scenarios:
 
-- UPDATE-INTO-PREDICATE and INSERT-INTO-PREDICATE: Ds:P grows due to an update of a record D previously outside of Ds:P resulting in it being in Ds:P.
+- **UPDATE-INTO-PREDICATE** and **INSERT-INTO-PREDICATE**: Ds:P grows due to an update of a record D previously outside of Ds:P resulting in it being in Ds:P.
   T2 reads Ds:P in action 0, finding Xs.
   In action 1, T1 then updates Ds:P to Xs ∪ Ys via an update or an insert, and commits.
   T2 then re-reads Ds:P and find it has unexpectedly grown.
-- UPDATE-OUT-OF-PREDICATE and DELETE-FROM-PREDICATE: Ds:P shrinks due to an update of a record D previously inside of Ds:P resulting in it being outside of Ds:P.  
+- **UPDATE-OUT-OF-PREDICATE** and **DELETE-FROM-PREDICATE**: Ds:P shrinks due to an update of a record D previously inside of Ds:P resulting in it being outside of Ds:P.
   T2 reads Ds:P in action 0, finding Xs.
   In action 1, T1 then updates Ds:P to Xs - Ys via an update or a delete, and commits.
   T2 then re-reads Ds:P and find it has unexpectedly shrunk.
@@ -187,4 +195,48 @@ Taking a "data item" to be a record identified by a fixed identifier, we test th
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_phantom_read.png" alt="Non-Repeatable Read swimlanes" width="600" />
 
 GraphML file: [swml_non_repeatable_read.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_phantom_read.graphml)
+
+**Result for H2**
+
+I have been unable to produce a phantom read in isolation level ANSI "REPEATABLE READ". They only occur in 
+levels ANSI "READ UNCOMMITTED" and ANSI "READ COMMITTED"! Maybe I'm doing something wrong or the H2 implementation fixes
+the "phantom read" problem at lower levels already.
+
+Moreover, in level ANSI "READ COMMITTED", apparently randomly, in about ~0.13% of the cases, the anomaly is *not* observed,
+similar to the "Non-Repeatabale Reads". 
+
+### Test 4: Eliciting "SQL Timeout"
+
+[TestElicitingSqlTimeout.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingSqlTimeout.java)
+
+If a write lock on some data item D is held by transaction T1 and then a transaction T2 tries to write that some item D,
+T2 will wait a few hundred milliseconds for that lock to be released before an exception signaling a timeout is raised.
+
+Here is the scenario.
+
+1. In actions 0 and 1, both transactions update non-conflicting data items with a marker string so that we can check that
+rollbeck properly happened. Actions 0 and 1 can also be left out.
+2. In action 2, transaction T1 writes to data item X but but does not yet commit. In action 3, transaction T2 tries to 
+write to X too but cannot acquire the lock. After a wait time, an exception is raised on T2 is rolled back. 
+3. Once the thread animating T2 has terminated, an internal lock is liberated and T1 can continue to action 4, after
+which it commits. Data item X will have been updated with the text of T1.
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_sql_timeout.png" alt="Dirty Read swimlanes" width="600" />
+
+GraphML file: [swml_sql_timeout.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_sql_timeout.graphml)
+
+**Result for H2**
+
+- At the JDBC level, the exception raised is an [`org.h2.jdbc.JdbcSQLTimeoutException`](https://h2database.com/javadoc/org/h2/jdbc/JdbcSQLTimeoutException.html)
+  with the text `Timeout trying to lock table "STUFF"; SQL statement: ...`
+- At the Spring Data JDBC level, the exception raised is an [`org.springframework.dao.QueryTimeoutException`](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/dao/QueryTimeoutException.html), with the H2 exception as cause and with the text `PreparedStatementCallback; SQL [...]; Timeout trying to lock table "STUFF"; SQL statement: ...`
+- At the Spring Transaction level, a problem appears. Apparently Spring tries to "translate" the original exception somehow, but fails.
+  It then throws a [`org.springframework.transaction.TransactionSystemException`](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/transaction/TransactionSystemException.html) with the message `JDBC rollback failed`, which is confusing. Can one fix that?
+
+Empirically lock timeout is a few ms more than 2 seconds, although the manual for [`SET DEFAULT LOCK TIMEOUT`](https://www.h2database.com/html/commands.html#set_default_lock_timeout)
+says it is actually 1 seconds. One can also set the lock timeout on a per-session basis: [`SET LOCK TIMEOUT`](https://www.h2database.com/html/commands.html#set_lock_timeout).
+
+Run `SELECT * FROM INFORMATION_SCHEMA.SETTINGS WHERE SETTING_NAME = 'DEFAULT_LOCK_TIMEOUT'` to check the current value. 
+
+Try `SET DEFAULT_LOCK_TIMEOUT 500` to accelerate the tests.
 
