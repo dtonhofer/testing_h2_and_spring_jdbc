@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
+import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableWithAllActionsInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
@@ -25,8 +26,9 @@ public class AgentRunnable_NonRepeatableRead_Modifier extends AgentRunnableWithA
                                                     @NotNull Isol isol,
                                                     @NotNull Op op,
                                                     @NotNull Setup setup,
+                                                    @NotNull PrintException pex,
                                                     @NotNull TransactionalGateway txGw) {
-        super(db, appState, agentId, isol, op, PrintException.No, txGw);
+        super(db, appState, agentId, isol, op, pex, txGw);
         this.setup = setup;
     }
 
@@ -37,7 +39,7 @@ public class AgentRunnable_NonRepeatableRead_Modifier extends AgentRunnableWithA
             case 1 -> {
                 switchByOp();
                 incState();
-                setTerminatedNicely();
+                setThreadTerminatedNicely();
                 setStop();
             }
             default -> waitOnAppState();

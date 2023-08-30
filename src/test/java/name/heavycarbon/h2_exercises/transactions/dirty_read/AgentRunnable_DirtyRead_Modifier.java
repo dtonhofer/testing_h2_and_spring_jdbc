@@ -5,6 +5,7 @@ import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
 import name.heavycarbon.h2_exercises.transactions.agent.MyRollbackException;
+import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableWithAllActionsInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
@@ -47,7 +48,7 @@ public class AgentRunnable_DirtyRead_Modifier extends AgentRunnableWithAllAction
                 // --> RuntimeException or Error also cause rollback but
                 // checked exceptions do not by default!!
                 incState();
-                setTerminatedNicely();
+                setThreadTerminatedNicely();;
                 throw new MyRollbackException("Rolling back any modification");
             }
             default -> waitOnAppState();

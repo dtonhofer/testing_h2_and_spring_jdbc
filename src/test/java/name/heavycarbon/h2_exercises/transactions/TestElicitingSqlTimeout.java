@@ -1,6 +1,7 @@
 package name.heavycarbon.h2_exercises.transactions;
 
 import lombok.extern.slf4j.Slf4j;
+import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.*;
 import name.heavycarbon.h2_exercises.transactions.sql_timeout.AgentContainer_SqlTimeout;
@@ -53,18 +54,18 @@ public class TestElicitingSqlTimeout {
     @MethodSource("provideTestArgStream")
     void testSqlTimeoutException(@NotNull Isol isol) {
         setupDb();
-        final var ac = new AgentContainer_SqlTimeout(db, isol, new Setup(stuff_a, stuff_b, stuff_x), txGw);
+        final PrintException pex = PrintException.Yes;
+        final var ac = new AgentContainer_SqlTimeout(db, isol, new Setup(stuff_a, stuff_b, stuff_x), pex, txGw);
         {
             ac.startAll();
             ac.joinAll();
         }
         if (isol == Isol.READ_UNCOMMITTED) {
             // Bravo read the X as updated by Alfa
-            Assertions.assertThat(ac.getBravo().getAsSeenInState3()).isEqualTo(stuff_x.with("UPDATED BY ALFA"));
-        }
-        else {
+            Assertions.assertThat(ac.getBravo().getReadInState3()).isEqualTo(stuff_x.with("UPDATED BY ALFA"));
+        } else {
             // Bravo read the X that existed of the start of transaction
-            Assertions.assertThat(ac.getBravo().getAsSeenInState3()).isEqualTo(stuff_x);
+            Assertions.assertThat(ac.getBravo().getReadInState3()).isEqualTo(stuff_x);
         }
         Assertions.assertThat(ac.isAnyThreadTerminatedBadly()).isTrue();
         // Alfa wrote its marker A
@@ -73,7 +74,7 @@ public class TestElicitingSqlTimeout {
         Assertions.assertThat(db.readById(stuff_b.getId()).orElseThrow().getPayload()).isEqualTo("---");
         // Alfa won writing X
         Assertions.assertThat(db.readById(stuff_x.getId()).orElseThrow().getPayload()).isEqualTo("UPDATED BY ALFA");
-        // Found an "org.springframework.dao.QueryTimeoutException" at the JDBC level
+        // Found an "org.springframework.dao.QueryTimeoutException" at the Spring Data JDBC level
         // TODO : Which is however transformed into an "org.springframework.transaction.TransactionSystemException"
         // TODO: at the @Transaction level due to inability of Spring to "translate" "org.h2.jdbc.JdbcSQLTimeoutException"
         // TODO: Can one fix that?

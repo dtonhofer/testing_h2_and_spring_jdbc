@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
+import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableWithAllActionsInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
@@ -34,8 +35,9 @@ public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransa
                                @NotNull AgentId agentId,
                                @NotNull Isol isol,
                                @NotNull Setup setup,
+                               @NotNull PrintException pex,
                                @NotNull TransactionalGateway txGw) {
-        super(db, appState, agentId, isol, Op.Unset, PrintException.No, txGw);
+        super(db, appState, agentId, isol, Op.Unset, pex, txGw);
         this.setup = setup;
     }
 
@@ -63,7 +65,7 @@ public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransa
                 }
                 updatePayloadByIdExpectingException();
                 log.info("'{}' did not end with an exception!?", getAgentId());
-                setTerminatedNicely();
+                setThreadTerminatedNicely();
                 setStop();
             }
             default -> waitOnAppState();

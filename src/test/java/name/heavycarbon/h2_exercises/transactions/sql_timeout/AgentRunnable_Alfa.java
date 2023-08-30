@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
+import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableWithAllActionsInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
@@ -20,8 +21,9 @@ public class AgentRunnable_Alfa extends AgentRunnableWithAllActionsInsideTransac
                               @NotNull AgentId agentId,
                               @NotNull Isol isol,
                               @NotNull Setup setup,
+                              @NotNull PrintException pex,
                               @NotNull TransactionalGateway txGw) {
-        super(db, appState, agentId, isol, AgentContainer.Op.Unset, PrintException.No, txGw);
+        super(db, appState, agentId, isol, AgentContainer.Op.Unset, pex, txGw);
         this.setup = setup;
     }
 
@@ -38,7 +40,7 @@ public class AgentRunnable_Alfa extends AgentRunnableWithAllActionsInsideTransac
                 incState();
             }
             case 4 -> {
-                setTerminatedNicely();
+                setThreadTerminatedNicely();
                 incState();
                 setStop();
             }

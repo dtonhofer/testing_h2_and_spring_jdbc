@@ -17,13 +17,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureJdbc;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
 // ---
-// A "dirty read" happens when transaction T2 can read data written by, but not yet committed
-// by, transaction T1. This unsoundness is supposed to go away at transaction level
-// ANSI READ COMMITTED and stronger.
+// A "dirty read" happens when transaction T2 can read data written by,
+// but not yet committed by, transaction T1. This unsoundness is supposed
+// to go away at isolation level ANSI READ COMMITTED and stronger.
 // ---
 
 // ---
@@ -75,6 +76,31 @@ public class TestElicitingDirtyReads {
     }
 
     // ---
+
+
+    private static Stream<Arguments> provideTestArgStream() {
+        List<Arguments> res = new ArrayList<>();
+        for (int i = 0; i < 1; i++) {
+            res.add(Arguments.of(Isol.READ_UNCOMMITTED, Op.Insert, Expected.DirtyRead));
+            res.add(Arguments.of(Isol.READ_COMMITTED, Op.Insert, Expected.Soundness));
+            res.add(Arguments.of(Isol.REPEATABLE_READ, Op.Insert, Expected.Soundness));
+            res.add(Arguments.of(Isol.SERIALIZABLE, Op.Insert, Expected.Soundness));
+            res.add(Arguments.of(Isol.SNAPSHOT, Op.Insert, Expected.Soundness));
+
+            res.add(Arguments.of(Isol.READ_UNCOMMITTED, Op.Update, Expected.DirtyRead));
+            res.add(Arguments.of(Isol.READ_COMMITTED, Op.Update, Expected.Soundness));
+            res.add(Arguments.of(Isol.REPEATABLE_READ, Op.Update, Expected.Soundness));
+            res.add(Arguments.of(Isol.SERIALIZABLE, Op.Update, Expected.Soundness));
+            res.add(Arguments.of(Isol.SNAPSHOT, Op.Update, Expected.Soundness));
+
+            res.add(Arguments.of(Isol.READ_UNCOMMITTED, Op.Delete, Expected.DirtyRead));
+            res.add(Arguments.of(Isol.READ_COMMITTED, Op.Delete, Expected.Soundness));
+            res.add(Arguments.of(Isol.REPEATABLE_READ, Op.Delete, Expected.Soundness));
+            res.add(Arguments.of(Isol.SERIALIZABLE, Op.Delete, Expected.Soundness));
+            res.add(Arguments.of(Isol.SNAPSHOT, Op.Delete, Expected.Soundness));
+        }
+        return res.stream();
+    }
 
     @ParameterizedTest
     @MethodSource("provideTestArgStream")
@@ -130,25 +156,4 @@ public class TestElicitingDirtyReads {
         Assertions.assertThat(actualStuff).isEqualTo(expectedStuff);
     }
 
-    private static Stream<Arguments> provideTestArgStream() {
-        return Stream.of(
-                Arguments.of(Isol.READ_UNCOMMITTED, Op.Insert, Expected.DirtyRead),
-                Arguments.of(Isol.READ_COMMITTED, Op.Insert, Expected.Soundness),
-                Arguments.of(Isol.REPEATABLE_READ, Op.Insert, Expected.Soundness),
-                Arguments.of(Isol.SERIALIZABLE, Op.Insert, Expected.Soundness),
-                Arguments.of(Isol.SNAPSHOT, Op.Insert, Expected.Soundness),
-
-                Arguments.of(Isol.READ_UNCOMMITTED, Op.Update, Expected.DirtyRead),
-                Arguments.of(Isol.READ_COMMITTED, Op.Update, Expected.Soundness),
-                Arguments.of(Isol.REPEATABLE_READ, Op.Update, Expected.Soundness),
-                Arguments.of(Isol.SERIALIZABLE, Op.Update, Expected.Soundness),
-                Arguments.of(Isol.SNAPSHOT, Op.Update, Expected.Soundness),
-
-                Arguments.of(Isol.READ_UNCOMMITTED, Op.Delete, Expected.DirtyRead),
-                Arguments.of(Isol.READ_COMMITTED, Op.Delete, Expected.Soundness),
-                Arguments.of(Isol.REPEATABLE_READ, Op.Delete, Expected.Soundness),
-                Arguments.of(Isol.SERIALIZABLE, Op.Delete, Expected.Soundness),
-                Arguments.of(Isol.SNAPSHOT, Op.Delete, Expected.Soundness)
-        );
-    }
 }

@@ -68,4 +68,23 @@ public class SessionManip {
         jdbcTemplate.execute("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL " + Isol.toSql(level));
     }
 
+    // ---
+    // Used to inspect current session
+    // ---
+
+    public static String printAllSessions(@NotNull SessionManip sm) {
+        List<SessionInfoExt> list = sm.getAllSessionsInfo();
+        StringBuilder buf = new StringBuilder("Sessions");
+        for (SessionInfoExt iext : list) {
+            buf.append("\n");
+            buf.append("   ");
+            buf.append(iext.sessionId());
+            buf.append(", ");
+            buf.append(iext.isol());
+            if (iext.isMySession()) {
+                buf.append(", mine");
+            }
+        }
+        return buf.toString();
+    }
 }

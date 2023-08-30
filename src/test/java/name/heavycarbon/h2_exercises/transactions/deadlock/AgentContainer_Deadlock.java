@@ -1,9 +1,6 @@
 package name.heavycarbon.h2_exercises.transactions.deadlock;
 
-import name.heavycarbon.h2_exercises.transactions.agent.Agent;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
-import name.heavycarbon.h2_exercises.transactions.agent.AppState;
+import name.heavycarbon.h2_exercises.transactions.agent.*;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
@@ -21,9 +18,10 @@ public class AgentContainer_Deadlock extends AgentContainer {
             @NotNull Db db,
             @NotNull Isol isol,
             @NotNull Setup setup,
+            @NotNull PrintException pex,
             @NotNull TransactionalGateway txGw) {
-        final var alfa = new AgentRunnable_Alfa(db, appState, alfaId, isol, setup, txGw);
-        final var bravo = new AgentRunnable_Bravo(db, appState, bravoId, isol, setup, txGw);
+        final var alfa = new AgentRunnable_Alfa(db, appState, alfaId, isol, setup, pex, txGw);
+        final var bravo = new AgentRunnable_Bravo(db, appState, bravoId, isol, setup, pex, txGw);
         setUnmodifiableAgentMap(List.of(new Agent(alfa), new Agent(bravo)));
     }
 

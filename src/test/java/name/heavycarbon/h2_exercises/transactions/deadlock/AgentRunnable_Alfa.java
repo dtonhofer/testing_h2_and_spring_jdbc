@@ -6,6 +6,7 @@ import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentRunnable;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
+import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
@@ -21,6 +22,8 @@ public class AgentRunnable_Alfa extends AgentRunnable {
     @Getter
     private final TransactionalGateway txGw;
 
+    private final PrintException printException;
+
     // ---
 
     public AgentRunnable_Alfa(@NotNull Db db,
@@ -28,14 +31,17 @@ public class AgentRunnable_Alfa extends AgentRunnable {
                               @NotNull AgentId agentId,
                               @NotNull Isol isol,
                               @NotNull Setup setup,
+                              @NotNull PrintException printException,
                               @NotNull TransactionalGateway txGw) {
         super(db, appState, agentId, isol, Op.Unset);
         this.txGw = txGw;
         this.setup = setup;
+        this.printException = printException;
     }
 
     @Override
     public void run() {
+        setThreadStarted();
         log.info("'{}' starting.", getAgentId());
         syncOnAppState();
     }
@@ -70,7 +76,7 @@ public class AgentRunnable_Alfa extends AgentRunnable {
                 enterTransaction(); // can throw
             }
             case 4 -> {
-                setTerminatedNicely();
+                setThreadTerminatedNicely();
                 incState();
                 setStop();
             }
@@ -91,7 +97,7 @@ public class AgentRunnable_Alfa extends AgentRunnable {
             // - The "Throwable" is an "Error" or an unchecked "Exception"
             // or
             // - The "Exception" has been marked as causing ROLLBACK in the "@Transaction" annotation
-            exceptionMessage(log, ex, PrintException.No);
+            exceptionMessage(log, ex, printException);
         }
     }
 

@@ -2,6 +2,7 @@ package name.heavycarbon.h2_exercises.transactions;
 
 import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
+import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
@@ -65,15 +66,38 @@ public class TestElicitingPhantomReads {
 
     // ---
 
+    private static Stream<Arguments> provideTestArgStream() {
+        // ...normally, one would expect unsoundness at these levels
+        // Set<Isol> unsoundIsols = new HashSet<>(List.of(Isol.READ_UNCOMMITTED, Isol.READ_COMMITTED, Isol.REPEATABLE_READ));
+        // ... but in H2, Phantom Reads already disappear at isolation level READ_COMMITTED. Thus:
+        Set<Isol> unsoundIsols = new HashSet<>(List.of(Isol.READ_UNCOMMITTED, Isol.READ_COMMITTED));
+        List<Arguments> res = new ArrayList<>();
+        // increase the upper range for a high number of tests!
+        for (int i=0;i<100;i++) {
+            for (Isol isol : List.of(Isol.READ_UNCOMMITTED, Isol.READ_COMMITTED, Isol.REPEATABLE_READ, Isol.SERIALIZABLE, Isol.SNAPSHOT)) {
+                for (Op op : List.of(Op.Insert, Op.Delete, Op.UpdateIntoPredicateSet, Op.UpdateOutOfPredicateSet)) {
+                    for (PhantomicPredicate pred : List.of(PhantomicPredicate.ByEnsemble, PhantomicPredicate.ByPayload, PhantomicPredicate.ByEnsembleAndPayload)) {
+                        Expected expected = unsoundIsols.contains(isol) ? Expected.PhantomRead : Expected.Soundness;
+                        res.add(Arguments.of(isol, op, pred, expected));
+                    }
+                }
+            }
+        }
+        return res.stream();
+    }
+
+    // ---
+
     @ParameterizedTest
     @MethodSource("provideTestArgStream")
-    void testDirtyRead(@NotNull Isol isol, @NotNull Op op, @NotNull PhantomicPredicate pred, @NotNull Expected expected) {
+    void testPhantomRead(@NotNull Isol isol, @NotNull Op op, @NotNull PhantomicPredicate pred, @NotNull Expected expected) {
         setupDb();
         // Initial setup as expected?
         Assertions.assertThat(db.readAll()).isEqualTo(Stuff.sortById(setup.initialStuff));
         // Let's go!
-        log.info("STARTING: Non-Repeatable Read, isolation level {}, operation {}, predicate {}, expecting {}", isol, op, pred, expected);
-        final var ac = new AgentContainer_PhantomRead(db, isol, op, pred, setup, txGw);
+        log.info("STARTING: Phantom Read, isolation level {}, operation {}, predicate {}, expecting {}", isol, op, pred, expected);
+        PrintException pex = PrintException.Yes;
+        final var ac = new AgentContainer_PhantomRead(db, isol, op, pred, setup, pex, txGw);
         {
             ac.startAll();
             ac.joinAll();
@@ -84,20 +108,27 @@ public class TestElicitingPhantomReads {
         Assertions.assertThat(ac.getReaderRunnable().getResult()).isPresent();
         List<Stuff> result1 = ac.getReaderRunnable().getResult().orElseThrow().getResult1();
         List<Stuff> result2 = ac.getReaderRunnable().getResult().orElseThrow().getResult2();
-        // Was the result sound or where phantom reads detected?
         switch (expected) {
             case PhantomRead -> expectPhantomRead(op, pred, result1, result2);
             case Soundness -> expectSoundness(pred, result1, result2);
         }
         // Final database contents as expected?
         finallyExpectWhatTheModifierDid(op);
-        log.info("OK: Non-Repeatable Read, isolation level {}, operation {}, predicate {}, expected {}", isol, op, pred, expected);
+        log.info("OK: Phantom Read, isolation level {}, operation {}, predicate {}, expected {}", isol, op, pred, expected);
+    }
+
+    private void expectPhantomRead(@NotNull Op op, @NotNull PhantomicPredicate pred, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2) {
+        expectPhantomRead_firstRead(pred, result1);
+        expectPhantomRead_secondRead(op, pred, result2);
     }
 
     private void expectPhantomRead_firstRead(@NotNull PhantomicPredicate pred, @NotNull List<Stuff> result1) {
         List<Stuff> expectedStuff1 = switch (pred) {
+            // reading by selecting on column "ensemble" (selecting those belonging to ensemble one)
             case ByEnsemble -> setup.getInitialRecordsInDesiredEnsemble();
+            // reading by selecting on column "payload" (selecting those ending in "AA")
             case ByPayload -> setup.getInitialRecordsWithMatchingSuffix();
+            // reading by selecting on both columns "ensemble" and "payload"
             case ByEnsembleAndPayload -> setup.getInitialRecordsInDesiredEnsembleWithMatchingSuffix();
             default -> throw new IllegalArgumentException("Unhandled predicate " + pred);
         };
@@ -183,11 +214,6 @@ public class TestElicitingPhantomReads {
         }
     }
 
-    private void expectPhantomRead(@NotNull Op op, @NotNull PhantomicPredicate pred, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2) {
-        expectPhantomRead_firstRead(pred, result1);
-        expectPhantomRead_secondRead(op, pred, result2);
-    }
-
     // ---
     // "Soundness" means we just see what's initially there and nothing changes during the transaction!
     // But what is initially there depends on the predicate.
@@ -195,8 +221,11 @@ public class TestElicitingPhantomReads {
 
     private void expectSoundness(@NotNull PhantomicPredicate pred, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2) {
         List<Stuff> expected = switch (pred) {
+            // reading by selecting on column "ensemble" (selecting those belonging to ensemble one)
             case ByEnsemble -> setup.getInitialRecordsInDesiredEnsemble();
+            // reading by selecting on column "payload" (selecting those ending in "AA")
             case ByPayload -> setup.getInitialRecordsWithMatchingSuffix();
+            // reading by selecting on both columns "ensemble" and "payload"
             case ByEnsembleAndPayload -> setup.getInitialRecordsInDesiredEnsembleWithMatchingSuffix();
             default -> throw new IllegalArgumentException("Unhandled pred " + pred);
         };
@@ -240,25 +269,6 @@ public class TestElicitingPhantomReads {
         }
         res = Stuff.sortById(res); // not really needed
         return res;
-    }
-
-    // ---
-
-    private static Stream<Arguments> provideTestArgStream() {
-        // ...normally, one would expect unsoundness at these levels
-        // Set<Isol> unsoundIsols = new HashSet<>(List.of(Isol.READ_UNCOMMITTED, Isol.READ_COMMITTED, Isol.REPEATABLE_READ));
-        // ... but n H2, Phantom Reads already disappear at isolation level READ_COMMITTED. Thus:
-        Set<Isol> unsoundIsols = new HashSet<>(List.of(Isol.READ_UNCOMMITTED, Isol.READ_COMMITTED));
-        List<Arguments> res = new ArrayList<>();
-        for (Isol isol : List.of(Isol.READ_UNCOMMITTED, Isol.READ_COMMITTED, Isol.REPEATABLE_READ, Isol.SERIALIZABLE, Isol.SNAPSHOT)) {
-            for (Op op : List.of(Op.Insert, Op.Delete, Op.UpdateIntoPredicateSet, Op.UpdateOutOfPredicateSet)) {
-                for (PhantomicPredicate pred : List.of(PhantomicPredicate.ByEnsemble, PhantomicPredicate.ByPayload, PhantomicPredicate.ByEnsembleAndPayload)) {
-                    Expected expected = unsoundIsols.contains(isol) ? Expected.PhantomRead : Expected.Soundness;
-                    res.add(Arguments.of(isol, op, pred, expected));
-                }
-            }
-        }
-        return res.stream();
     }
 
 }

@@ -2,6 +2,7 @@ package name.heavycarbon.h2_exercises.transactions;
 
 import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
+import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.*;
 import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.AgentContainer_NonRepeatableRead;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureJdbc;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -52,16 +54,16 @@ public class TestElicitingNonRepeatableReads {
     private static final StuffId initRowId = new StuffId(100);
 
     // initial row in database
-    private static final Stuff initRow = new Stuff(initRowId, EnsembleId.Two, "INIT");
+    private static final Stuff initRow = new Stuff(initRowId, EnsembleId.Two, "INITIAL");
 
     // the initRow will be updated to this
-    private static final Stuff updateRow = new Stuff(initRowId, EnsembleId.Two, "XXX");
+    private static final Stuff updateRow = new Stuff(initRowId, EnsembleId.Two, "UPDATED");
 
     // this row will be additionally inserted
-    private static final Stuff insertRow = new Stuff(new StuffId(200), EnsembleId.Two, "INSERT");
+    private static final Stuff insertRow = new Stuff(new StuffId(200), EnsembleId.Two, "INSERTED");
 
     // this row is initially in the database and will be deleted
-    private static final Stuff deleteRow = new Stuff(new StuffId(300), EnsembleId.Two, "DELETE");
+    private static final Stuff deleteRow = new Stuff(new StuffId(300), EnsembleId.Two, "DELETED");
 
     // ---
 
@@ -73,19 +75,50 @@ public class TestElicitingNonRepeatableReads {
 
     // ---
 
+    private static Stream<Arguments> provideTestArgStream() {
+        List<Arguments> res = new ArrayList<>();
+        // increase the upper range for a high number of tests!
+        for (int i = 0; i < 1; i++) {
+            // "Unexpected changes to record" problem goes away at isolation level ANSI "REPEATABLE READ"
+            res.add(Arguments.of(Isol.READ_UNCOMMITTED, Op.Update, Expected.NonRepeatableRead));
+            res.add(Arguments.of(Isol.READ_COMMITTED, Op.Update, Expected.NonRepeatableRead));
+            res.add(Arguments.of(Isol.REPEATABLE_READ, Op.Update, Expected.Soundness));
+            res.add(Arguments.of(Isol.SERIALIZABLE, Op.Update, Expected.Soundness));
+            res.add(Arguments.of(Isol.SNAPSHOT, Op.Update, Expected.Soundness));
+            // "Unexpected appearance of a missing record" goes away at isolation level ANSI "REPEATABLE READ"
+            // In a sense this is a "phantom read" with the predicate "selection by id" but the problem
+            // actually goes away in isolation level "ANSI REPEATABLE READ".
+            res.add(Arguments.of(Isol.READ_UNCOMMITTED, Op.Insert, Expected.NonRepeatableRead));
+            res.add(Arguments.of(Isol.READ_COMMITTED, Op.Insert, Expected.NonRepeatableRead));
+            res.add(Arguments.of(Isol.REPEATABLE_READ, Op.Insert, Expected.Soundness));
+            res.add(Arguments.of(Isol.SERIALIZABLE, Op.Insert, Expected.Soundness));
+            res.add(Arguments.of(Isol.SNAPSHOT, Op.Insert, Expected.Soundness));
+            // "Unexpected disappearance of a record" goes away at isolation level ANSI "REPEATABLE READ"
+            // In a sense this is a "phantom read" with the predicate "selection by id" but the problem
+            // actually goes away in isolation level "ANSI REPEATABLE READ".
+            res.add(Arguments.of(Isol.READ_UNCOMMITTED, Op.Delete, Expected.NonRepeatableRead));
+            res.add(Arguments.of(Isol.READ_COMMITTED, Op.Delete, Expected.NonRepeatableRead));
+            res.add(Arguments.of(Isol.REPEATABLE_READ, Op.Delete, Expected.Soundness));
+            res.add(Arguments.of(Isol.SERIALIZABLE, Op.Delete, Expected.Soundness));
+            res.add(Arguments.of(Isol.SNAPSHOT, Op.Delete, Expected.Soundness));
+        }
+        return res.stream();
+    }
+
     @ParameterizedTest
     @MethodSource("provideTestArgStream")
     void testNonRepeatableRead(@NotNull Isol isol, @NotNull Op op, @NotNull Expected expected) {
         setupDb();
         log.info("STARTING: Non-Repeatable Read, isolation level {}, operation {}", isol, op);
-        final var ac = new AgentContainer_NonRepeatableRead(db, isol, op, new Setup(initRow, updateRow, insertRow, deleteRow), txGw);
+        final PrintException pex = PrintException.No;
+        final var ac = new AgentContainer_NonRepeatableRead(db, isol, op, new Setup(initRow, updateRow, insertRow, deleteRow), pex, txGw);
         {
             ac.startAll();
             ac.joinAll();
         }
         // None of the threads should have terminated badly!
         Assertions.assertThat(ac.isAnyThreadTerminatedBadly()).isFalse();
-        // Result exist
+        // Result exist and can be extracted
         Assertions.assertThat(ac.getReaderRunnable().getResult()).isPresent();
         List<Stuff> result1 = ac.getReaderRunnable().getResult().orElseThrow().getResult1();
         List<Stuff> result2 = ac.getReaderRunnable().getResult().orElseThrow().getResult2();
@@ -93,6 +126,7 @@ public class TestElicitingNonRepeatableReads {
             case NonRepeatableRead -> expectNonRepeatableRead(op, result1, result2);
             case Soundness -> expectSoundness(op, result1, result2);
         }
+        // Final database contents as expected?
         finallyExpectWhatTheModifierDid(op);
         log.info("OK: Non-Repeatable Read, isolation level {}, operation {}, expected {}", isol, op, expected);
     }
@@ -149,39 +183,6 @@ public class TestElicitingNonRepeatableReads {
             default -> throw new IllegalArgumentException("Unhandled op " + op);
         };
         Assertions.assertThat(Stuff.sortById(actualStuff)).isEqualTo(Stuff.sortById(expectedStuff));
-    }
-
-    private static Stream<Arguments> provideTestArgStream() {
-        return Stream.of(
-
-                // "Unexpected changes to record" problem goes away at isolation level ANSI "REPEATABLE READ"
-
-                Arguments.of(Isol.READ_UNCOMMITTED, Op.Update, Expected.NonRepeatableRead),
-                Arguments.of(Isol.READ_COMMITTED, Op.Update, Expected.NonRepeatableRead),
-                Arguments.of(Isol.REPEATABLE_READ, Op.Update, Expected.Soundness),
-                Arguments.of(Isol.SERIALIZABLE, Op.Update, Expected.Soundness),
-                Arguments.of(Isol.SNAPSHOT, Op.Update, Expected.Soundness),
-
-                // "Unexpected appearance of a missing record" goes away at isolation level ANSI "REPEATABLE READ"
-                // In a sense this is a "phantom read" with the predicate "selection by id" but the problem
-                // actually goes away in isolation level "ANSI REPEATABLE READ".
-
-                Arguments.of(Isol.READ_UNCOMMITTED, Op.Insert, Expected.NonRepeatableRead),
-                Arguments.of(Isol.READ_COMMITTED, Op.Insert, Expected.NonRepeatableRead),
-                Arguments.of(Isol.REPEATABLE_READ, Op.Insert, Expected.Soundness),
-                Arguments.of(Isol.SERIALIZABLE, Op.Insert, Expected.Soundness),
-                Arguments.of(Isol.SNAPSHOT, Op.Insert, Expected.Soundness),
-
-                // "Unexpected disappearance of a record" goes away at isolation level ANSI "REPEATABLE READ"
-                // In a sense this is a "phantom read" with the predicate "selection by id" but the problem
-                // actually goes away in isolation level "ANSI REPEATABLE READ".
-
-                Arguments.of(Isol.READ_UNCOMMITTED, Op.Delete, Expected.NonRepeatableRead),
-                Arguments.of(Isol.READ_COMMITTED, Op.Delete, Expected.NonRepeatableRead),
-                Arguments.of(Isol.REPEATABLE_READ, Op.Delete, Expected.Soundness),
-                Arguments.of(Isol.SERIALIZABLE, Op.Delete, Expected.Soundness),
-                Arguments.of(Isol.SNAPSHOT, Op.Delete, Expected.Soundness)
-        );
     }
 
 }

@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 // ---
@@ -53,23 +54,25 @@ public abstract class AgentRunnable implements Runnable {
     @Getter
     private final @NotNull Op op;
 
-    // A boolean that signals that run() should break out of its inner loop and exit cleanly.
+    // A boolean that signals that the agent should break out of its inner loop and exit cleanly.
+    // This boolean is set from the main thread.
 
     private final AtomicBoolean stop = new AtomicBoolean(false);
 
+    // A value that indicates:
+    // 0: Agent's thread not yet started (Thread.isAlive() probably returns false)
+    // 1: Agent's thread has been started (Thread.isAlive() returns true)
+    // 1: Agent's thread terminated unexpectedly (Thread.isAlive() returns false, again but the value is still 1)
+    // 2: Agent's thread terminated nicely/normally (Thread.isAlive() probably returns false)
+
+    private final AtomicInteger threadState = new AtomicInteger(0);
+
     // A callback to a method that can query all the Runnables (not accessible
-    // directly from here) whether they have "terminated nicely" or not.
+    // directly from here) whether they have "terminated badly" or not.
     // May be left unset.
 
     @Setter
-    private Optional<Supplier<Boolean>> anyThreadTerminatedBadly = Optional.empty();
-
-    // If a thread "terminates nicely", it sets this flag before exiting.
-    // Made "atomic" to make sure reading & writing is consistent.
-    // Could also be a "volatile boolean"
-
-    @Getter
-    private final AtomicBoolean terminatedNicely = new AtomicBoolean(false);
+    private volatile Supplier<Boolean> anyThreadTerminatedBadly = null;
 
     // ---
 
@@ -93,22 +96,36 @@ public abstract class AgentRunnable implements Runnable {
     // loop is supposed to break so that the agent terminates smoothly.
 
     protected boolean isAnyThreadTerminatedBadly() {
-        return anyThreadTerminatedBadly.map(Supplier::get).orElse(false);
+        Supplier<Boolean> supplier = anyThreadTerminatedBadly;
+        if (supplier == null) {
+            // can't say
+            return false;
+        }
+        else {
+            // ask the supplier
+            return supplier.get();
+        }
     }
 
     // Check whether this agent has set the "terminated nicely" boolean, which
     // is "faLse" by default. Calling this should only be done if the agent
     // terminated.
 
-    protected boolean isTerminatedNicely() {
-        return terminatedNicely.get();
+    public int getThreadState() {
+        return threadState.get();
     }
 
     // Called from run(). Before terminating, the agent calls this to signal
     // that everything went well, and it didn't terminate due to an exception.
 
-    protected void setTerminatedNicely() {
-        terminatedNicely.set(true);
+    protected void setThreadTerminatedNicely() {
+        threadState.set(2);
+    }
+
+    // Called from run() as the first instruction.
+
+    protected void setThreadStarted() {
+        threadState.set(1);
     }
 
     // Called regularly from run() to decide whether to continue with the loop.
@@ -118,18 +135,7 @@ public abstract class AgentRunnable implements Runnable {
         return !stop.get() && !isAnyThreadTerminatedBadly();
     }
 
-    // Move to another state. Called from run().
-    // This is only called if the caller holds the monitor to appState.
-
-    protected void moveToState(int newState) {
-        // no need to synchronize again, but let's make clear what we want
-        synchronized (appState) {
-            appState.set(newState);
-            appState.notify(); // must hold monitor for this
-        }
-    }
-
-    // Move to the next state.
+    // Move to the next state (that's all we ever need for now).
     // This is only called if the calling agent holds the monitor to appState.
 
     protected void incState() {
@@ -156,35 +162,22 @@ public abstract class AgentRunnable implements Runnable {
         }
     }
 
-    protected static String printAllSessions(@NotNull SessionManip sm) {
-        List<SessionInfoExt> list = sm.getAllSessionsInfo();
-        StringBuilder buf = new StringBuilder("Sessions");
-        for (SessionInfoExt iext : list) {
-            buf.append("\n");
-            buf.append("   ");
-            buf.append(iext.sessionId());
-            buf.append(", ");
-            buf.append(iext.isol());
-            if (iext.isMySession()) {
-                buf.append(", mine");
-            }
-        }
-        return buf.toString();
-    }
-
-    // Called from within the run() loop but from a Transactional_X class
-    // outside the package, so public!
+    // ---
+    // Called from within the agent's thread as last message
+    // ---
 
     protected String finalMessage(boolean interrupted) {
         return "'" + agentId + "' terminating. stop = " + stop + ", interrupted = " + interrupted + ", bad threads = " + isAnyThreadTerminatedBadly();
     }
 
-    public enum PrintException {Yes, No}
+    // ---
+    // Called from within the agent's thread as last message if a Throwable or Exception was caught
+    // ---
 
-    protected void exceptionMessage(@NotNull Logger log, @NotNull Exception ex, @NotNull PrintException print) {
-        log.error("'{}' terminating due to '{}' with message '{}'", agentId, ex.getClass().getName(), ex.getMessage());
+    protected void exceptionMessage(@NotNull Logger log, @NotNull Throwable th, @NotNull PrintException print) {
+        log.error("'{}' terminating due to '{}' with message '{}'", agentId, th.getClass().getName(), th.getMessage());
         if (print == PrintException.Yes) {
-            log.error("The exception: {} ", ex);
+            log.error("The throwable: {} ", th);
         }
     }
 }

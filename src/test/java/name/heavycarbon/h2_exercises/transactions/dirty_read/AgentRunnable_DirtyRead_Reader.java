@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
+import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableWithAllActionsInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
@@ -62,7 +63,7 @@ public class AgentRunnable_DirtyRead_Reader extends AgentRunnableWithAllActionsI
                 result = optStuff.map(List::of).orElseGet(List::of);
                 assert result != null;
                 incState();
-                setTerminatedNicely();
+                setThreadTerminatedNicely();;
                 setStop();
             }
             default -> waitOnAppState();

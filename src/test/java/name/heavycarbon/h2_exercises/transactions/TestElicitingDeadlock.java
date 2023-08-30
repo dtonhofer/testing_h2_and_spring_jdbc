@@ -1,6 +1,7 @@
 package name.heavycarbon.h2_exercises.transactions;
 
 import lombok.extern.slf4j.Slf4j;
+import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.*;
 import name.heavycarbon.h2_exercises.transactions.deadlock.AgentContainer_Deadlock;
@@ -57,8 +58,9 @@ public class TestElicitingDeadlock {
         boolean withMarkers = false;
         boolean withReadingInState2 = true;
         boolean withReadingInState5 = true;
+        final PrintException pex = PrintException.No;
         setupDb();
-        final var ac = new AgentContainer_Deadlock(db, isol, new Setup(stuff_a, stuff_b, stuff_x, withMarkers, withReadingInState2, withReadingInState5), txGw);
+        final var ac = new AgentContainer_Deadlock(db, isol, new Setup(stuff_a, stuff_b, stuff_x, withMarkers, withReadingInState2, withReadingInState5), pex, txGw);
         {
             ac.startAll();
             ac.joinAll();

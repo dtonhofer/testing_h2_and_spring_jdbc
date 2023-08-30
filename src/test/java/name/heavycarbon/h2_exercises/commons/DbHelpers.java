@@ -3,9 +3,6 @@ package name.heavycarbon.h2_exercises.commons;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import org.jetbrains.annotations.NotNull;
-import org.springframework.jdbc.core.JdbcTemplate;
-
 public abstract class DbHelpers {
 
     // ----

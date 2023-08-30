@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
+import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableWithAllActionsInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
@@ -24,15 +25,16 @@ public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransa
     private Exception exceptionSeen = null;
 
     @Getter
-    private Stuff asSeenInState3;
+    private Stuff readInState3;
 
     public AgentRunnable_Bravo(@NotNull Db db,
                                @NotNull AppState appState,
                                @NotNull AgentId agentId,
                                @NotNull Isol isol,
                                @NotNull Setup setup,
+                               @NotNull PrintException pex,
                                @NotNull TransactionalGateway txGw) {
-        super(db, appState, agentId, isol, AgentContainer.Op.Unset, PrintException.No, txGw);
+        super(db, appState, agentId, isol, AgentContainer.Op.Unset, pex, txGw);
         this.setup = setup;
     }
 
@@ -43,12 +45,12 @@ public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransa
                 incState();
             }
             case 3 -> {
-                asSeenInState3 = getDb().readById(setup.stuff_x().getId()).orElseThrow();
+                readInState3 = getDb().readById(setup.stuff_x().getId()).orElseThrow();
                 // increment state immediately so that "alfa" can actually continue when this thread dies
                 incState();
                 updatePayloadByIdExpectingException();
                 log.info("'{}' did not end with an exception!?", getAgentId());
-                setTerminatedNicely();
+                setThreadTerminatedNicely();
                 setStop();
             }
             default -> waitOnAppState();

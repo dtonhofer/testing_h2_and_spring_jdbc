@@ -34,18 +34,20 @@ public abstract class AgentRunnableWithAllActionsInsideTransaction extends Agent
 
     @Override
     public void run() {
+        setThreadStarted();
         log.info("'{}' starting.", getAgentId());
         try {
             // >>> call a method marked @Transactional on an instance injected by Spring
             txGw.wrapIntoTransaction(this::syncOnAppState, getAgentId(), getIsol());
             // <<<
-        } catch (Exception ex) {
+        // } catch (Exception ex) {
+        } catch (Throwable th) {
             // Catch only Exceptions. Errors are let through!
             // Note that Spring will have performed a ROLLBACK if:
             // - The "Throwable" is an "Error" or an unchecked "Exception"
             // or
             // - The "Exception" has been marked as causing ROLLBACK in the "@Transaction" annotation
-            exceptionMessage(log, ex, printException);
+            exceptionMessage(log, th, printException);
         }
     }
 
