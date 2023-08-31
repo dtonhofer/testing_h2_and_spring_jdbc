@@ -49,19 +49,16 @@ public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransa
     protected void switchByAppState() throws InterruptedException {
         switch (getAppState().get()) {
             case 1 -> {
-
-                incState();
-            }
-            case 3 -> {
-                incState();
                 readInState1 = getDb().readById(xId).orElseThrow();
+                incState();
             }
-            case 6 -> {
-                // reading for fun, this doesn't chnage beahviour
-                //readInState4 = getDb().readById(xId).orElseThrow();
+            case 4 -> {
+                // reading for fun, this doesn't change beahviour
+                readInState4 = getDb().readById(xId).orElseThrow();
                 // >>> This will end in deadlock exception
                 updatePayloadByIdExpectingException();
                 // <<<
+                // Never get here
                 log.info("'{}' did not end with an exception!?", getAgentId());
                 setThreadTerminatedNicely();
                 setStop();

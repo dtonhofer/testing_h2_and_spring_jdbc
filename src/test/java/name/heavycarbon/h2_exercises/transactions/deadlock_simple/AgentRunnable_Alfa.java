@@ -98,7 +98,7 @@ public class AgentRunnable_Alfa extends AgentRunnable {
                 incState();
                 enterTransaction();
             }
-            case 5 -> {
+            case 3 -> {
                 setThreadTerminatedNicely();
                 incState();
                 setStop();
@@ -122,7 +122,7 @@ public class AgentRunnable_Alfa extends AgentRunnable {
 
     private boolean isStatInsideTransaction() {
         int state = getAppState().get();
-        return 0 < state && state < 5; // ADAPT AS NEEDED
+        return 0 < state && state < 3;
     }
 
     public void runStateMachineLoopInsideTransaction() throws InterruptedException {
@@ -136,9 +136,6 @@ public class AgentRunnable_Alfa extends AgentRunnable {
         switch (getAppState().get()) {
             case 2 -> {
                 getDb().updatePayloadById(xId, "UPDATED BY ALFA");
-                incState();
-            }
-            case 4 -> {
                 incState();
             }
             default -> waitOnAppState();
