@@ -55,7 +55,7 @@ public class TransactionalGateway {
 
     @Transactional(rollbackFor = { MyRollbackException.class, InterruptedException.class })
     public void wrapIntoTransaction(@NotNull ThrowingRunnable runnable, @NotNull AgentId agentId, @NotNull Isol isol) throws MyRollbackException, InterruptedException {
-        log.info("'{}' in transaction. Setting {}", agentId, isol);
+        log.info("'{}' in transaction. Setting to level {}", agentId, isol);
         sm.setMySessionIsolationLevel(isol);
         runnable.run();
     }

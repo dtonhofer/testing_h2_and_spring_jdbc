@@ -61,7 +61,6 @@ public class AgentRunnable_DirtyRead_Reader extends AgentRunnableWithAllActionsI
                 // The optional result is mapped to a list which may or may not be empty
                 // But "result" won't be null.
                 result = optStuff.map(List::of).orElseGet(List::of);
-                assert result != null;
                 incState();
                 setThreadTerminatedNicely();;
                 setStop();

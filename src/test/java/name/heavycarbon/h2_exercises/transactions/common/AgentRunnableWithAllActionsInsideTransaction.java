@@ -16,7 +16,7 @@ public abstract class AgentRunnableWithAllActionsInsideTransaction extends Agent
     @Getter
     private final TransactionalGateway txGw;
 
-    private final PrintException printException;
+    private final PrintException pex;
 
     // ---
 
@@ -25,38 +25,61 @@ public abstract class AgentRunnableWithAllActionsInsideTransaction extends Agent
                                                         @NotNull AgentId agentId,
                                                         @NotNull Isol isol,
                                                         @NotNull Op op,
-                                                        @NotNull PrintException printException,
+                                                        @NotNull PrintException pex,
                                                         @NotNull TransactionalGateway txGw) {
         super(db, appState, agentId, isol, op);
         this.txGw = txGw;
-        this.printException = printException;
+        this.pex = pex;
+    }
+
+    private static void randomizeStartup() {
+        try {
+            // wait between 0 and 20ms, randomly
+            Thread.sleep(Math.round(Math.random())*20);
+        }
+        catch (InterruptedException ex) {
+            // NOP
+        }
     }
 
     @Override
     public void run() {
         setThreadStarted();
         log.info("'{}' starting.", getAgentId());
+        randomizeStartup(); // not really needed
         try {
-            // >>> call a method marked @Transactional on an instance injected by Spring
-            txGw.wrapIntoTransaction(this::syncOnAppState, getAgentId(), getIsol());
-            // <<<
-        // } catch (Exception ex) {
-        } catch (Throwable th) {
-            // Catch only Exceptions. Errors are let through!
+            enterTransaction();
+        } catch (Exception ex) {
             // Note that Spring will have performed a ROLLBACK if:
             // - The "Throwable" is an "Error" or an unchecked "Exception"
             // or
             // - The "Exception" has been marked as causing ROLLBACK in the "@Transaction" annotation
-            exceptionMessage(log, th, printException);
+            exceptionMessage(log, ex, pex);
+        }
+    }
+
+    private void enterTransaction() throws MyRollbackException, InterruptedException {
+        try {
+            log.info("'{}' entering transaction.", getAgentId());
+            // call a method marked @Transactional on an instance injected by Spring
+            txGw.wrapIntoTransaction(this::syncOnAppState, getAgentId(), getIsol());
+        }
+        finally {
+            log.info("'{}' out of transaction.", getAgentId());
         }
     }
 
     // Having opened a transaction, we are called back ... here!
 
     public void syncOnAppState() throws MyRollbackException {
-        synchronized (getAppState()) {
-            log.info("'{}' in critical section.", getAgentId());
-            catchInterruptedExceptionFromStateMachineLoop();
+        try {
+            synchronized (getAppState()) {
+                log.info("'{}' in critical section.", getAgentId());
+                catchInterruptedExceptionFromStateMachineLoop();
+            }
+        }
+        finally {
+            log.info("'{}' out of critical section.", getAgentId());
         }
     }
 
@@ -66,8 +89,9 @@ public abstract class AgentRunnableWithAllActionsInsideTransaction extends Agent
             runStateMachineLoop();
         } catch (InterruptedException ex) {
             interrupted = true;
+        } finally {
+            log.info(finalMessage(interrupted));
         }
-        log.info(finalMessage(interrupted));
     }
 
     private void runStateMachineLoop() throws InterruptedException, MyRollbackException {

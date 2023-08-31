@@ -77,8 +77,8 @@ public class TestElicitingNonRepeatableReads {
 
     private static Stream<Arguments> provideTestArgStream() {
         List<Arguments> res = new ArrayList<>();
-        // increase the upper range for a high number of tests!
-        for (int i = 0; i < 1; i++) {
+        final int rounds = 1; // increase for heavier testing
+        for (int i = 0; i < rounds; i++) {
             // "Unexpected changes to record" problem goes away at isolation level ANSI "REPEATABLE READ"
             res.add(Arguments.of(Isol.READ_UNCOMMITTED, Op.Update, Expected.NonRepeatableRead));
             res.add(Arguments.of(Isol.READ_COMMITTED, Op.Update, Expected.NonRepeatableRead));

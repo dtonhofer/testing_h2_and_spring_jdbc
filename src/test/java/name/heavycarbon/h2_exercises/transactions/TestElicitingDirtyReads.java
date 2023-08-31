@@ -80,7 +80,8 @@ public class TestElicitingDirtyReads {
 
     private static Stream<Arguments> provideTestArgStream() {
         List<Arguments> res = new ArrayList<>();
-        for (int i = 0; i < 1; i++) {
+        final int rounds = 1; // increase for heavier testing
+        for (int i = 0; i < rounds; i++) {
             res.add(Arguments.of(Isol.READ_UNCOMMITTED, Op.Insert, Expected.DirtyRead));
             res.add(Arguments.of(Isol.READ_COMMITTED, Op.Insert, Expected.Soundness));
             res.add(Arguments.of(Isol.REPEATABLE_READ, Op.Insert, Expected.Soundness));

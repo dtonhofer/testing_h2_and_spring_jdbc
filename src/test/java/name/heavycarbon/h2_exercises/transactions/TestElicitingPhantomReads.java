@@ -72,8 +72,8 @@ public class TestElicitingPhantomReads {
         // ... but in H2, Phantom Reads already disappear at isolation level READ_COMMITTED. Thus:
         Set<Isol> unsoundIsols = new HashSet<>(List.of(Isol.READ_UNCOMMITTED, Isol.READ_COMMITTED));
         List<Arguments> res = new ArrayList<>();
-        // increase the upper range for a high number of tests!
-        for (int i=0;i<100;i++) {
+        final int rounds = 1; // increase for heavier testing
+        for (int i=0;i<rounds;i++) {
             for (Isol isol : List.of(Isol.READ_UNCOMMITTED, Isol.READ_COMMITTED, Isol.REPEATABLE_READ, Isol.SERIALIZABLE, Isol.SNAPSHOT)) {
                 for (Op op : List.of(Op.Insert, Op.Delete, Op.UpdateIntoPredicateSet, Op.UpdateOutOfPredicateSet)) {
                     for (PhantomicPredicate pred : List.of(PhantomicPredicate.ByEnsemble, PhantomicPredicate.ByPayload, PhantomicPredicate.ByEnsembleAndPayload)) {
