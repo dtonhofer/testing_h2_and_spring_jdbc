@@ -9,13 +9,13 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-public class AgentContainer_Deadlock extends AgentContainer {
+public class AgentContainer_DeadlockSimple extends AgentContainer {
 
     private final AgentId alfaId = new AgentId("alfa");
     private final AgentId bravoId = new AgentId("bravo");
     private final AppState appState = new AppState();
 
-    public AgentContainer_Deadlock(
+    public AgentContainer_DeadlockSimple(
             @NotNull Db db,
             @NotNull Isol isol,
             @NotNull StuffId xId,

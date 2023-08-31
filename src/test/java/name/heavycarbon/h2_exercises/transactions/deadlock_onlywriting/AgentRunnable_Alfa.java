@@ -1,16 +1,14 @@
-package name.heavycarbon.h2_exercises.transactions.deadlock;
+package name.heavycarbon.h2_exercises.transactions.deadlock_onlywriting;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentRunnable;
-import name.heavycarbon.h2_exercises.transactions.agent.AppState;
-import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
+import name.heavycarbon.h2_exercises.transactions.agent.*;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
+import name.heavycarbon.h2_exercises.transactions.db.StuffId;
 import org.jetbrains.annotations.NotNull;
+
 
 @Slf4j
 public class AgentRunnable_Alfa extends AgentRunnable {
@@ -18,7 +16,10 @@ public class AgentRunnable_Alfa extends AgentRunnable {
     // Reference to a class that has a method annotated @Transactional
 
     @Getter
-    private final TransactionalGateway txGw;
+    private final @NotNull TransactionalGateway txGw;
+
+    @Getter
+    private Exception exceptionSeen = null;
 
     private final @NotNull Setup setup;
 
@@ -30,10 +31,10 @@ public class AgentRunnable_Alfa extends AgentRunnable {
                               @NotNull AppState appState,
                               @NotNull AgentId agentId,
                               @NotNull Isol isol,
-                              @NotNull Setup setup,
                               @NotNull PrintException printException,
+                              @NotNull Setup setup,
                               @NotNull TransactionalGateway txGw) {
-        super(db, appState, agentId, isol, Op.Unset);
+        super(db, appState, agentId, isol, AgentContainer.Op.Unset);
         this.txGw = txGw;
         this.setup = setup;
         this.printException = printException;
@@ -105,7 +106,7 @@ public class AgentRunnable_Alfa extends AgentRunnable {
 
     private boolean isStatInsideTransaction() {
         int state = getAppState().get();
-        return 0 <= state && state <= 3;
+        return 0 < state && state < 4;
     }
 
     public void runStateMachineLoopInsideTransaction() throws InterruptedException {
@@ -117,14 +118,13 @@ public class AgentRunnable_Alfa extends AgentRunnable {
 
     protected void switchByAppStateInsideTransaction() throws InterruptedException {
         switch (getAppState().get()) {
-            case 0 -> {
-                if (setup.withMarkers()) {
-                    getDb().updatePayloadById(setup.stuff_a().getId(), "ALFA WAS HERE");
-                }
+            case 1 -> {
+                // This action is irrelevant for eliciting the deadlock! It may or may not be performed.
+                getDb().updatePayloadById(setup.alfaMarkerId(), "ALFA WAS HERE");
                 incState();
             }
             case 3 -> {
-                getDb().updatePayloadById(setup.stuff_x().getId(), "UPDATED BY ALFA");
+                getDb().updatePayloadById(setup.collisionId(), "UPDATED BY ALFA");
                 incState();
             }
             default -> waitOnAppState();

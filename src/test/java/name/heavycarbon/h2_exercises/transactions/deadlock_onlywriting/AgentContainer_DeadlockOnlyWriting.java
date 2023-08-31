@@ -1,4 +1,4 @@
-package name.heavycarbon.h2_exercises.transactions.deadlock;
+package name.heavycarbon.h2_exercises.transactions.deadlock_onlywriting;
 
 import name.heavycarbon.h2_exercises.transactions.agent.*;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
@@ -8,20 +8,20 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-public class AgentContainer_Deadlock extends AgentContainer {
+public class AgentContainer_DeadlockOnlyWriting extends AgentContainer {
 
     private final AgentId alfaId = new AgentId("alfa");
     private final AgentId bravoId = new AgentId("bravo");
     private final AppState appState = new AppState();
 
-    public AgentContainer_Deadlock(
+    public AgentContainer_DeadlockOnlyWriting(
             @NotNull Db db,
             @NotNull Isol isol,
             @NotNull Setup setup,
             @NotNull PrintException pex,
             @NotNull TransactionalGateway txGw) {
-        final var alfa = new AgentRunnable_Alfa(db, appState, alfaId, isol, setup, pex, txGw);
-        final var bravo = new AgentRunnable_Bravo(db, appState, bravoId, isol, setup, pex, txGw);
+        final var alfa = new AgentRunnable_Alfa(db, appState, alfaId, isol, pex, setup, txGw);
+        final var bravo = new AgentRunnable_Bravo(db, appState, bravoId, isol, pex, setup, txGw);
         setUnmodifiableAgentMap(List.of(new Agent(alfa), new Agent(bravo)));
     }
 

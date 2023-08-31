@@ -134,7 +134,6 @@ public class AgentRunnable_Alfa extends AgentRunnable {
                 if (shifted == Shifted.Yes) {
                     getDb().updatePayloadById(xId, "UPDATED BY ALFA");
                 }
-                // state exists only for proper sequencing
                 incState();
             }
             case 3 -> {
