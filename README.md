@@ -256,6 +256,8 @@ Here is a scenario for a "deadlock", which occurs when the database engine finds
 - Once T2 has read X, T1 updates it and commits.
 - If T1 now tries to update X in action 3, an exception is raised to roll back T2, saying that a deadlock was detected. (T1 may or may npt read X in action 3, it doesn't matter)
 
+Note that "action 0" only exists due to implementation issues. The code for the thread running T1 has a structure that demands it must first encounter an action before entering a transaction. So be it!
+
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_simple.png" alt="Simple deadlock swimlanes" width="600" />
 
 GraphML file: [swml_sql_timeout.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_simple.graphml)
