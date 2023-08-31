@@ -20,8 +20,9 @@ public class AgentContainer_Deadlock extends AgentContainer {
             @NotNull Isol isol,
             @NotNull StuffId xId,
             @NotNull PrintException pex,
+            @NotNull AgentRunnable_Alfa.Shifted shifted,
             @NotNull TransactionalGateway txGw) {
-        final var alfa = new AgentRunnable_Alfa(db, appState, alfaId, isol, xId, pex, txGw);
+        final var alfa = new AgentRunnable_Alfa(db, appState, alfaId, isol, xId, pex, shifted, txGw);
         final var bravo = new AgentRunnable_Bravo(db, appState, bravoId, isol, xId, pex, txGw);
         setUnmodifiableAgentMap(List.of(new Agent(alfa), new Agent(bravo)));
     }

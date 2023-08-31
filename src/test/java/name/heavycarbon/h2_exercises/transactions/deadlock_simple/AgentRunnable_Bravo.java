@@ -30,10 +30,10 @@ public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransa
     // Filled with the value of data item X read in state 1 and 3
 
     @Getter
-    private Stuff readInState1 = null;
+    private Stuff readInState2 = null;
 
     @Getter
-    private Stuff readInState4 = null;
+    private Stuff readInState5 = null;
 
     public AgentRunnable_Bravo(@NotNull Db db,
                                @NotNull AppState appState,
@@ -48,13 +48,13 @@ public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransa
 
     protected void switchByAppState() throws InterruptedException {
         switch (getAppState().get()) {
-            case 1 -> {
-                readInState1 = getDb().readById(xId).orElseThrow();
+            case 2 -> {
+                readInState2 = getDb().readById(xId).orElseThrow();
                 incState();
             }
-            case 4 -> {
+            case 5 -> {
                 // reading for fun, this doesn't change beahviour
-                readInState4 = getDb().readById(xId).orElseThrow();
+                readInState5 = getDb().readById(xId).orElseThrow();
                 // >>> This will end in deadlock exception
                 updatePayloadByIdExpectingException();
                 // <<<

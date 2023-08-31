@@ -3,6 +3,7 @@ package name.heavycarbon.h2_exercises.transactions.deadlock_simple;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.*;
+import name.heavycarbon.h2_exercises.transactions.common.Randomizer;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
@@ -17,11 +18,13 @@ public class AgentRunnable_Alfa extends AgentRunnable {
     @Getter
     private final TransactionalGateway txGw;
 
-
     private final @NotNull StuffId xId;
 
+    private final @NotNull PrintException pex;
 
-    private final PrintException pex;
+    private final @NotNull Shifted shifted;
+
+    public enum Shifted { Yes, No };
 
     // ---
 
@@ -31,27 +34,20 @@ public class AgentRunnable_Alfa extends AgentRunnable {
                               @NotNull Isol isol,
                               @NotNull StuffId xId,
                               @NotNull PrintException pex,
+                              @NotNull Shifted shifted,
                               @NotNull TransactionalGateway txGw) {
         super(db, appState, agentId, isol, AgentContainer.Op.Unset);
         this.txGw = txGw;
         this.xId = xId;
         this.pex = pex;
-    }
-
-    private static void randomizeStartup() {
-        try {
-            // wait between 0 and 20ms, randomly
-            Thread.sleep(Math.round(Math.random()) * 20);
-        } catch (InterruptedException ex) {
-            // NOP
-        }
+        this.shifted = shifted;
     }
 
     @Override
     public void run() {
         setThreadStarted();
         log.info("'{}' starting.", getAgentId());
-        randomizeStartup();
+        Randomizer.randomizeStartup();
         try {
             syncOnAppState();
         } catch (Exception ex) {
@@ -98,9 +94,9 @@ public class AgentRunnable_Alfa extends AgentRunnable {
                 incState();
                 enterTransaction();
             }
-            case 3 -> {
-                setThreadTerminatedNicely();
+            case 4 -> {
                 incState();
+                setThreadTerminatedNicely();
                 setStop();
             }
             default -> waitOnAppState();
@@ -122,7 +118,7 @@ public class AgentRunnable_Alfa extends AgentRunnable {
 
     private boolean isStatInsideTransaction() {
         int state = getAppState().get();
-        return 0 < state && state < 3;
+        return 0 < state && state < 4;
     }
 
     public void runStateMachineLoopInsideTransaction() throws InterruptedException {
@@ -134,8 +130,17 @@ public class AgentRunnable_Alfa extends AgentRunnable {
 
     protected void switchByAppStateInsideTransaction() throws InterruptedException {
         switch (getAppState().get()) {
-            case 2 -> {
-                getDb().updatePayloadById(xId, "UPDATED BY ALFA");
+            case 1 -> {
+                if (shifted == Shifted.Yes) {
+                    getDb().updatePayloadById(xId, "UPDATED BY ALFA");
+                }
+                // state exists only for proper sequencing
+                incState();
+            }
+            case 3 -> {
+                if (shifted == Shifted.No) {
+                    getDb().updatePayloadById(xId, "UPDATED BY ALFA");
+                }
                 incState();
             }
             default -> waitOnAppState();
