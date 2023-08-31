@@ -287,7 +287,7 @@ We will pass on this for now, but here is a swimline to explain them (if I under
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_read_and_write_skew.png" alt="Read Skew and Write Skew swimlanes" width="600" />
 
-GraphML file: [swml_sql_timeout.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_read_and_write_skew.graphml)
+GraphML file: [swml_read_and_write_skew.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_read_and_write_skew.graphml)
 
 ### Test 6: Eliciting "Deadlock"
 
