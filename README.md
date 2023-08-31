@@ -291,13 +291,24 @@ GraphML file: [swml_sql_timeout.graphml](https://github.com/dtonhofer/testing_h2
 
 ### Test 6: Eliciting "Deadlock"
 
-Here is a scenario for a "deadlock", which occurs when the database engine finds that the transactions have pretzelized themselves:
+Here is a scenario for a "deadlock", which occurs when the database engine finds that the transactions have pretzelized themselves. 
+In any isolation level above "READ COMMMITTED":
 
-- In action 0, transaction T2 reads data itme X (if X is not read by T2, there is no problem)
-- Once T2 has read X, T1 updates it and commits.
-- If T1 now tries to update X in action 3, an exception is raised to roll back T2, saying that a deadlock was detected. (T1 may or may npt read X in action 3, it doesn't matter)
+- Transaction T2 reads an existing data item X. If X is not read by T2, there won't be a deadlock!
+- Once T2 has read X, T1 updates it and then commits.
+- If T2 now tries to update X, an exception is raised to roll back T2, saying that a deadlock was detected. (T2 may or may not read X again before updating it, it doesn't matter)
 
-Note that "action 0" only exists due to implementation issues. The code for the thread running T1 has a structure that demands it must first encounter an action before entering a transaction. So be it!
+ Alternatively, a "shifted" version:
+
+- Transaction T1 updates an existing data item X.
+- After that transaction T2 reads data item X (if X is not read by T2, there is no deadlock!)
+- T1 then commits.
+- If T2 now tries to update X, an exception is raised to roll back T2, saying that a deadlock was detected. (T2 may or may not read X again before updating it, it doesn't matter)
+
+The scenario is not a problem for isolation levesl "READ UNCOMMITED" and "READ COMMITTED".
+
+In the illustration belowm, "action 0" only exists due to implementation issues. 
+The code for the thread running T1 has a structure that demands it must first encounter an action before entering a transaction. So be it!
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_simple.png" alt="Simple deadlock swimlanes" width="600" />
 
