@@ -104,6 +104,47 @@ Note that in all case, the transactions are running on the same isolation level.
 For notation purposes, ε (epsilon) is considered to be "the empty datum". In that view, if you read a nonexistent data item D, you obtain ε. 
 If you write ε to a data item D, you erase it.
 
+### Action sequencing
+
+Implementationwise, we run separate thread to animate separate transactions.
+The reason that we have several threads is that a Spring Data Transaction is a "per thread" concept, being equatable to a 
+stack frame that is pushed on "transaction start" and popped on "transaction end". We cannot just keep 
+connections in a data structure that is managed by a single thread.
+
+As the threads run, they traverse a series of numbered "actions" in strict sequence, with an action implying operations
+like reading, updating, inserting or deleting - generally just 1 operation. The strict action sequence is maintained by a
+common "state" integer variable (an `AtomicInteger` inside class `AppState`) which is incremented by 1 after an action has
+been executed by the proper thread.
+
+At any time, only a single thread is able to run. This is done by having all threads synchronize on the single `AppState`
+instance (i.e. acquire the monitor) early on ("high in the call stack") and never release the monitor except by calling
+[`AppState.notify()`](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#notify())
+and then 
+[`AppState.wait()`](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait()) when they
+notice that the current value of the state integer means it's not their turn. Calling `wait()` 
+releases the monitor which is then acquired by the other, previously notified thread. This works like a handy 
+"permission to act" token that needs little code. The result is a state machine animated by two threads.
+
+Some diagrams showing how the state machine works (but from an early code iteration so may no longer fully reflect the code)
+
+#### State machine for eliciting "Dirty Reads"
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/sequences/dirty_read_sequence.png" alt="Dirty Read sequence" width="600" />
+
+GraphML file: [dirty_read_sequence.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/sequences/dirty_read_sequence.graphml)
+
+#### State machine for eliciting "Non-Repeatable Reads"
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/sequences/non_repeatable_read_sequence.png" alt="Non-Repeatable Read sequence" width="600" />
+
+GraphML file: [non_repeatable_read_sequence.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/sequences/non_repeatable_read_sequence.graphml)
+
+#### State machine for eliciting "Phantom Reads"
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/sequences/phantom_read_sequence.png" alt="Phantom Read sequence" width="600" />
+
+GraphML file: [phantom_read_sequence.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/sequences/phantom_read_sequence.graphml)
+
 ### Test 1: Eliciting "Dirty Reads"
 
 [TestElicitingDirtyReads.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDirtyReads.java)
