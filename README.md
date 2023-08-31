@@ -240,3 +240,25 @@ Run `SELECT * FROM INFORMATION_SCHEMA.SETTINGS WHERE SETTING_NAME = 'DEFAULT_LOC
 
 Try `SET DEFAULT_LOCK_TIMEOUT 500` to accelerate the tests.
 
+### Test 5: Eliciting "Read Skew" and "Write Skew"
+
+We will pass on this for now, but here is a swimline to explain them (if I understoof them correctly):
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_read_and_write_skew.png" alt="Read Skew and Write Skew swimlanes" width="600" />
+
+GraphML file: [swml_sql_timeout.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_read_and_write_skew.graphml)
+
+### Test 6: Eliciting "Deadlock"
+
+Here is a scenario for a "deadlock", which occurs when the database engine finds that the transactions have pretzelized themselves:
+
+- In action 0, transaction T2 reads data itme X (if X is not read by T2, there is no problem)
+- Once T2 has read X, T1 updates it and commits.
+- If T1 now tries to update X in action 3, an exception is raised to roll back T2, saying that a deadlock was detected. (T1 may or may npt read X in action 3, it doesn't matter)
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_simple.png" alt="Simple deadlock swimlanes" width="600" />
+
+GraphML file: [swml_sql_timeout.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_simple.graphml)
+
+[TestElicitingDeadlockSimple.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDeadlockSimple.java)
+
