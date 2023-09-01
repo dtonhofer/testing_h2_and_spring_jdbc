@@ -123,7 +123,9 @@ and then
 [`AppState.wait()`](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait()) when they
 notice that the current value of the state integer means it's not their turn. Calling `wait()` 
 releases the monitor which is then acquired by the other, previously notified thread. This works like a handy 
-"permission to act" token that needs little code. The result is a state machine animated by two threads.
+"permission to act" token that needs little code. The result is a state machine animated by two threads. 
+With this approach, it is impossible to simulate the case of two threads freely and asynchronously accessing the database 
+though.
 
 Some diagrams showing how the state machine works (but from an early code iteration so may no longer fully reflect the code)
 
@@ -144,6 +146,12 @@ GraphML file: [non_repeatable_read_sequence.graphml](https://github.com/dtonhofe
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/sequences/phantom_read_sequence.png" alt="Phantom Read sequence" width="600" />
 
 GraphML file: [phantom_read_sequence.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/sequences/phantom_read_sequence.graphml)
+
+#### Call stack diagram
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/class_graphs/class_graph_dirty_read.png" alt="Call stack and Classes for Dirty Read" width="600" />
+
+GraphML file: [class_graph_dirty_read.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/class_graphs/class_graph_dirty_read.graphml)
 
 ### Test 1: Eliciting "Dirty Reads"
 
@@ -289,7 +297,7 @@ We will pass on this for now, but here is a swimline to explain them (if I under
 
 GraphML file: [swml_read_and_write_skew.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_read_and_write_skew.graphml)
 
-### Test 6: Eliciting "Deadlock"
+### Test 6: Eliciting "Deadlock" (using a read)
 
 Here is a scenario for a "deadlock", which occurs when the database engine finds that the transactions have pretzelized themselves. 
 In any isolation level above "READ COMMMITTED":
@@ -312,7 +320,16 @@ The code for the thread running T1 has a structure that demands it must first en
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_simple.png" alt="Simple deadlock swimlanes" width="600" />
 
-GraphML file: [swml_sql_timeout.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_simple.graphml)
+GraphML file: [swml_deadlock_simple.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_simple.graphml)
 
 [TestElicitingDeadlockSimple.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDeadlockSimple.java)
 
+### Test 7: Eliciting "Deadlock" (using a write)
+
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_simple.png" alt="Deadlock using only writes swimlanes" width="600" />
+
+GraphML file: [swml_deadlock_write_only.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_write_only.graphml)
+
+[TestElicitingDeadlockOnlyWriting.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDeadlockOnlyWriting.java)
+
+It would be interesting to test eliciting a deadlock while writing/reading from different tables. TO BE DONE!
