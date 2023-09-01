@@ -209,17 +209,17 @@ GraphML file: [swml_non_repeatable_read.graphml](https://github.com/dtonhofer/te
 
 **Result for H2**
 
-All three scenarios show up in isolation level ANSI "READ UNCOMMITTED" and ANSI "READ COMMITTED" only.
-However, in level ANSI "READ COMMITTED", apparently randomly, in about ~0.17% of the cases, the anomaly is *not* observed. 
+The Non-Repeatable Read phenomenon, in the form of the three scenarios above, shows up in isolation level ANSI "READ UNCOMMITTED" and ANSI "READ COMMITTED" only, as expected.
+However, in level ANSI "READ COMMITTED", apparently randomly, in about ~0.17% of the cases, the phenomenon is *not* observed. 
 So something is going on.
 
 ### Test 3: Eliciting "Phantom Reads"
 
 [TestElicitingPhantomReads.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingPhantomReads.java)
 
-A "phantom read" is a more hairy phenomenon as it involves result sets defined by predicates (hence the concept of a "predicate lock"). 
+A "Phantom Read" is a more hairy phenomenon as it involves result sets defined by predicates (hence the concept of a "predicate lock"). 
 
-A "phantom read" (phenomenon "P3" in *A Critique of ANSI SQL Isolation Levels*) happens when transaction T2 (the "reader" transaction)
+A "Phantom Read" (phenomenon "P3" in *A Critique of ANSI SQL Isolation Levels*) happens when transaction T2 (the "reader" transaction)
 selects a set of data item using a predicate, obtaining the result Ds:P with value set Xs. Transaction T1 (the "modifier" transaction) then
 updates the database so that Ds:P is extended to some Xs ∪ Ys (or reduced to some Xs - Ys) and commits. T2 then re-reads Ds:P and no longer
 finds the value set Xs seen earlier but the value set Xs ∪ Ys (or Xs - Ys) written by T1, i.e. data entrained via predicate-based reads into T2
@@ -248,12 +248,12 @@ GraphML file: [swml_non_repeatable_read.graphml](https://github.com/dtonhofer/te
 
 **Result for H2**
 
-I have been unable to produce a phantom read in isolation level ANSI "REPEATABLE READ". They only occur in 
-levels ANSI "READ UNCOMMITTED" and ANSI "READ COMMITTED"! Maybe I'm doing something wrong or the H2 implementation fixes
-the "phantom read" problem at lower levels already.
+I have actually been unable to produce a "Phantom Read" in isolation level ANSI "REPEATABLE READ". They only occur in 
+levels ANSI "READ UNCOMMITTED" and ANSI "READ COMMITTED". Maybe I'm doing something wrong or the H2 implementation fixes
+the "Phantom Read" problem at lower levels already.
 
-Moreover, in level ANSI "READ COMMITTED", apparently randomly, in about ~0.13% of the cases, the anomaly is *not* observed,
-similar to the "Non-Repeatabale Reads". 
+Moreover, in level ANSI "READ COMMITTED", apparently randomly, in about ~0.13% of the cases, the phenomenon is *not* observed,
+similar to what happens to "Non-Repeatabale Reads". 
 
 ### Test 4: Eliciting "SQL Timeout"
 
@@ -300,7 +300,10 @@ GraphML file: [swml_read_and_write_skew.graphml](https://github.com/dtonhofer/te
 
 ### Test 6: Eliciting "Deadlock" (using a read)
 
-Here is a scenario for a "deadlock", which occurs when the database engine finds that the transactions have pretzelized themselves. 
+Here is a scenario for a "deadlock", which occurs when the database engine finds that the transactions have pretzelized themselves. The exception
+raised is a [`JdbcSQLTransactionRollbackException`](https://h2database.com/javadoc/org/h2/jdbc/JdbcSQLTransactionRollbackException.html) with the message
+`Deadlock detected. The current transaction was rolled back`.
+
 In any isolation level above "READ COMMMITTED":
 
 - Transaction T2 reads an existing data item X. If X is not read by T2, there won't be a deadlock!
@@ -334,3 +337,8 @@ GraphML file: [swml_deadlock_write_only.graphml](https://github.com/dtonhofer/te
 [TestElicitingDeadlockOnlyWriting.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDeadlockOnlyWriting.java)
 
 It would be interesting to test eliciting a deadlock while writing/reading from different tables. TO BE DONE!
+
+It seesm that, as long as two transaction T1 and T2 were active concurrently, T1 wrote X, then committed and T2 read or wrote _something_ 
+then (after T1's commit), writes X too, a deadlock is detected. If I reflect on what could go wrong in such scenarios,
+I don't see the reason for throwing. Is H2 just extremely pessimistic/conservative?
+
