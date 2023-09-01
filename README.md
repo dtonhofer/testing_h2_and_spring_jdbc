@@ -319,7 +319,7 @@ In any isolation level above "READ COMMMITTED":
 
 The scenario is not a problem for isolation levesl "READ UNCOMMITED" and "READ COMMITTED".
 
-In the illustration belowm, "action 0" only exists due to implementation issues. 
+In the illustration below, "action 0" only exists due to implementation issues. 
 The code for the thread running T1 has a structure that demands it must first encounter an action before entering a transaction. So be it!
 
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_simple.png" alt="Simple deadlock swimlanes" width="600" />
