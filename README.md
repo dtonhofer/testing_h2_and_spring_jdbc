@@ -13,6 +13,7 @@ Some links:
 
 - [Spring Data JDBC](https://spring.io/projects/spring-data-jdbc)
 - [The H2 database](http://h2database.com/html/main.html)
+- [The H2 mailing list](https://groups.google.com/g/h2-database) 
 
 A must-read is this technical report, even though it could use a review:
 
