@@ -300,6 +300,8 @@ GraphML file: [swml_read_and_write_skew.graphml](https://github.com/dtonhofer/te
 
 ### Test 6: Eliciting "Deadlock" (using a read)
 
+(Working on unifiying Test 6 and Test 7)
+
 Here is a scenario for a "deadlock", which occurs when the database engine finds that the transactions have pretzelized themselves. The exception
 raised is a [`JdbcSQLTransactionRollbackException`](https://h2database.com/javadoc/org/h2/jdbc/JdbcSQLTransactionRollbackException.html) with the message
 `Deadlock detected. The current transaction was rolled back`.
@@ -330,7 +332,7 @@ GraphML file: [swml_deadlock_simple.graphml](https://github.com/dtonhofer/testin
 
 ### Test 7: Eliciting "Deadlock" (using a write)
 
-<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_simple.png" alt="Deadlock using only writes swimlanes" width="600" />
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_write_only.png" alt="Deadlock using only writes swimlanes" width="600" />
 
 GraphML file: [swml_deadlock_write_only.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_write_only.graphml)
 
