@@ -14,18 +14,13 @@ public class AgentContainer_PhantomRead extends AgentContainer {
     private final AgentId readerId = new AgentId("reader");
     private final AppState appState = new AppState();
 
-    public enum PhantomicPredicate {Unset, ByEnsembleAndPayload, ByEnsemble, ByPayload}
-
     public AgentContainer_PhantomRead(
             @NotNull Db db,
-            @NotNull Isol isol,
-            @NotNull Op op,
-            @NotNull PhantomicPredicate phantomicPredicate,
-            @NotNull Setup setup,
-            @NotNull PrintException pex,
-            @NotNull TransactionalGateway txGw) {
-        final var mr = new AgentRunnable_PhantomRead_Modifier(db, appState, modifierId, isol, op, setup, pex, txGw);
-        final var rr = new AgentRunnable_PhantomRead_Reader(db, appState, readerId, isol, op, phantomicPredicate, setup, pex, txGw);
+            @NotNull TransactionalGateway txGw,
+            @NotNull Config config,
+            @NotNull DbConfig dbConfig) {
+        final var mr = new AgentRunnable_PhantomRead_Modifier(db, appState, modifierId, txGw, config, dbConfig);
+        final var rr = new AgentRunnable_PhantomRead_Reader(db, appState, readerId, txGw, config, dbConfig);
         setUnmodifiableAgentMap(List.of(new Agent(mr), new Agent(rr)));
     }
 

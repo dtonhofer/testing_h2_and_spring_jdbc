@@ -6,7 +6,6 @@ import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
-import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -19,23 +18,17 @@ public class AgentContainer_DirtyRead extends AgentContainer {
 
     public AgentContainer_DirtyRead(
             @NotNull Db db,
-            @NotNull Isol isol,
-            @NotNull Op op,
-            @NotNull Setup setup,
-            @NotNull TransactionalGateway txGw) {
-        final var mr = new AgentRunnable_DirtyRead_Modifier(db, appState, modifierId, isol, op, setup, txGw);
-        final var rr = new AgentRunnable_DirtyRead_Reader(db, appState, readerId, isol, op, setup, txGw);
+            @NotNull TransactionalGateway txGw,
+            @NotNull Config config,
+            @NotNull DbConfig dbConfig) {
+        final var mr = new AgentRunnable_DirtyRead_Modifier(db, appState, modifierId, txGw, config, dbConfig);
+        final var rr = new AgentRunnable_DirtyRead_Reader(db, appState, readerId, txGw, config, dbConfig);
         setUnmodifiableAgentMap(List.of(new Agent(mr), new Agent(rr)));
     }
 
     public @NotNull AgentRunnable_DirtyRead_Reader getReaderRunnable() {
         // Too much effort to make the get typesafe, just cast!
         return (AgentRunnable_DirtyRead_Reader) (get(readerId).getRunnable());
-    }
-
-    public @NotNull AgentRunnable_DirtyRead_Modifier getModifierRunnable() {
-        // Too much effort to make the get typesafe, just cast!
-        return (AgentRunnable_DirtyRead_Modifier) (get(modifierId).getRunnable());
     }
 
 }

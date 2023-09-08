@@ -53,7 +53,7 @@ public class Stuff {
     }
 
     // ---
-    // Sort the passed list by "id", returning a new list (the list is NOT sorted in-place)
+    // Sort the passed list by "id", returning a NEW list (the list is NOT sorted in-place)
     // ---
 
     public static List<Stuff> sortById(@NotNull List<Stuff> list) {

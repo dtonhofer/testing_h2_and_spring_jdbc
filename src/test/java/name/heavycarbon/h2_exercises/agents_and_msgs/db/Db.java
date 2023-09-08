@@ -101,7 +101,7 @@ public class Db {
 
     public void setupDatabase(boolean cleanupFirst) {
         if (cleanupFirst) {
-            DbHelpers.dropSchema(schemaName, true, jdbcTemplate);
+            DbHelpers.dropSchemaIfExists(schemaName, DbHelpers.Cascade.Yes, jdbcTemplate);
         }
         DbHelpers.createSchema(schemaName, jdbcTemplate);
         createTable();

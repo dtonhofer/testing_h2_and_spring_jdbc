@@ -3,8 +3,6 @@ package name.heavycarbon.h2_exercises.transactions.deadlock_simple;
 import name.heavycarbon.h2_exercises.transactions.agent.*;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
-import name.heavycarbon.h2_exercises.transactions.db.Isol;
-import name.heavycarbon.h2_exercises.transactions.db.StuffId;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -17,18 +15,16 @@ public class AgentContainer_DeadlockSimple extends AgentContainer {
 
     public AgentContainer_DeadlockSimple(
             @NotNull Db db,
-            @NotNull Isol isol,
-            @NotNull StuffId xId,
-            @NotNull PrintException pex,
-            @NotNull AgentRunnable_Alfa.Shifted shifted,
-            @NotNull TransactionalGateway txGw) {
-        final var alfa = new AgentRunnable_Alfa(db, appState, alfaId, isol, xId, pex, shifted, txGw);
-        final var bravo = new AgentRunnable_Bravo(db, appState, bravoId, isol, xId, pex, txGw);
+            @NotNull TransactionalGateway txGw,
+            @NotNull Config config,
+            @NotNull DbConfig dbConfig) {
+        final var alfa = new AgentRunnable_SubAlfa(db, appState, alfaId, txGw, config, dbConfig);
+        final var bravo = new AgentRunnable_Bravo(db, appState, bravoId, txGw, config, dbConfig);
         setUnmodifiableAgentMap(List.of(new Agent(alfa), new Agent(bravo)));
     }
 
-    public AgentRunnable_Alfa getAlfa() {
-        return (AgentRunnable_Alfa) (super.get(alfaId).getRunnable());
+    public AgentRunnable_SubAlfa getAlfa() {
+        return (AgentRunnable_SubAlfa) (super.get(alfaId).getRunnable());
     }
 
     public AgentRunnable_Bravo getBravo() {

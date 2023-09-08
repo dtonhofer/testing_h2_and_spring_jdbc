@@ -1,68 +1,69 @@
 package name.heavycarbon.h2_exercises.transactions.phantom_read;
 
 import lombok.extern.slf4j.Slf4j;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
-import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableWithAllActionsInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
-import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import name.heavycarbon.h2_exercises.transactions.db.StuffId;
 import org.jetbrains.annotations.NotNull;
 
 @Slf4j
 public class AgentRunnable_PhantomRead_Modifier extends AgentRunnableWithAllActionsInsideTransaction {
 
-    private final Setup setup;
+    @NotNull
+    private final Config config;
+    @NotNull
+    private final DbConfig dbConfig;
 
     public AgentRunnable_PhantomRead_Modifier(@NotNull Db db,
                                               @NotNull AppState appState,
                                               @NotNull AgentId agentId,
-                                              @NotNull Isol isol,
-                                              @NotNull Op op,
-                                              @NotNull Setup setup,
-                                              @NotNull PrintException pex,
-                                              @NotNull TransactionalGateway txGw) {
-        super(db, appState, agentId, isol, op, pex, txGw);
-        this.setup = setup;
+                                              @NotNull TransactionalGateway txGw,
+                                              @NotNull Config config,
+                                              @NotNull DbConfig dbConfig) {
+        super(db, appState, agentId, config.isol(), config.pex(), txGw);
+        this.config = config;
+        this.dbConfig = dbConfig;
     }
 
+    // ---
     // This is eventually called from the state machine loop inside a transaction
+    // ---
 
     protected void switchByAppState() throws InterruptedException {
         switch (getAppState().get()) {
             case 1 -> {
-                switchByOpAndPhantomicPredicate();
-                incState();
-                setThreadTerminatedNicely();
+                switchByOp();
+                incAppState();
+                setAgentTerminatedNicely();
                 setStop();
             }
             default -> waitOnAppState();
         }
     }
 
-    private void switchByOpAndPhantomicPredicate() {
-        switch (getOp()) {
-            case Insert -> getDb().insert(setup.insertMe);
-            case Delete -> getDb().deleteById(setup.deleteMe.getId());
-            case UpdateIntoPredicateSet -> {
-                final StuffId id = setup.updateForMovingIn.getId();
-                final String newPayload = setup.updateForMovingInChanged.getPayload();
-                final EnsembleId newEnsembleId = setup.updateForMovingInChanged.getEnsembleId();
+    private void switchByOp() {
+        switch (config.op()) {
+            case Insert -> getDb().insert(dbConfig.insertMe);
+            case Delete -> getDb().deleteById(dbConfig.deleteMe.getId());
+            case UpdateInto -> {
+                final StuffId id = dbConfig.updateForMovingIn.getId();
+                final String newPayload = dbConfig.updateForMovingInChanged.getPayload();
+                final EnsembleId newEnsembleId = dbConfig.updateForMovingInChanged.getEnsembleId();
                 getDb().updateEnsembleById(id, newEnsembleId);
                 getDb().updatePayloadById(id, newPayload);
             }
-            case UpdateOutOfPredicateSet -> {
-                final StuffId id = setup.updateForMovingOut.getId();
-                final String newPayload = setup.updateForMovingOutChanged.getPayload();
-                final EnsembleId newEnsembleId = setup.updateForMovingOutChanged.getEnsembleId();
+            case UpdateOutOf -> {
+                final StuffId id = dbConfig.updateForMovingOut.getId();
+                final String newPayload = dbConfig.updateForMovingOutChanged.getPayload();
+                final EnsembleId newEnsembleId = dbConfig.updateForMovingOutChanged.getEnsembleId();
                 getDb().updateEnsembleById(id, newEnsembleId);
                 getDb().updatePayloadById(id, newPayload);
             }
-            default -> throw new IllegalArgumentException("Unhandled op " + getOp());
+            default -> throw new IllegalArgumentException("Unhandled op " + config.op());
         }
     }
 

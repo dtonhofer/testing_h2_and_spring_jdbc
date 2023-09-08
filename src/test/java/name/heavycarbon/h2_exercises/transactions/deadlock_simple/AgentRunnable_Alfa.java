@@ -7,47 +7,48 @@ import name.heavycarbon.h2_exercises.transactions.common.Randomizer;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
-import name.heavycarbon.h2_exercises.transactions.db.StuffId;
 import org.jetbrains.annotations.NotNull;
 
 @Slf4j
-public class AgentRunnable_Alfa extends AgentRunnable {
+public abstract class AgentRunnable_Alfa extends AgentRunnable {
 
     // Reference to a class that has a method annotated @Transactional
 
     @Getter
     private final TransactionalGateway txGw;
 
-    private final @NotNull StuffId xId;
+    @NotNull
+    protected final Config config;
 
-    private final @NotNull PrintException pex;
-
-    private final @NotNull Shifted shifted;
-
-    public enum Shifted { Yes, No };
-
-    // ---
+    @NotNull
+    protected final DbConfig dbConfig;
 
     public AgentRunnable_Alfa(@NotNull Db db,
                               @NotNull AppState appState,
                               @NotNull AgentId agentId,
-                              @NotNull Isol isol,
-                              @NotNull StuffId xId,
-                              @NotNull PrintException pex,
-                              @NotNull Shifted shifted,
-                              @NotNull TransactionalGateway txGw) {
-        super(db, appState, agentId, isol, AgentContainer.Op.Unset);
+                              @NotNull TransactionalGateway txGw,
+                              @NotNull Config config,
+                              @NotNull DbConfig dbConfig) {
+        super(db, appState, agentId, config.getIsol());
         this.txGw = txGw;
-        this.xId = xId;
-        this.pex = pex;
-        this.shifted = shifted;
+        this.config = config;
+        this.dbConfig = dbConfig;
+    }
+
+    protected void startMessage() {
+        log.info("'{}' starting", getAgentId());
+        log.info("'{}' isolation level = '{}'", getAgentId(), config.getIsol());
+        log.info("'{}' random startup delay = '{}'",getAgentId(), config.isRandomStartupDelay());
+        log.info("'{}' alfa update timing = '{}'", getAgentId(), config.getAlfaUpdateTiming());;
     }
 
     @Override
     public void run() {
-        setThreadStarted();
-        log.info("'{}' starting.", getAgentId());
-        Randomizer.randomizeStartup();
+        setAgentStarted();
+        startMessage();
+        if (config.isRandomStartupDelay()) {
+            Randomizer.randomizeStartup();
+        }
         try {
             syncOnAppState();
         } catch (Exception ex) {
@@ -55,7 +56,7 @@ public class AgentRunnable_Alfa extends AgentRunnable {
             // - The "Throwable" is an "Error" or an unchecked "Exception"
             // or
             // - The "Exception" has been marked as causing ROLLBACK in the "@Transaction" annotation
-            exceptionMessage(log, ex, pex);
+            exceptionMessage(log, ex, config.getPex());
         }
     }
 
@@ -84,24 +85,12 @@ public class AgentRunnable_Alfa extends AgentRunnable {
     private void runStateMachineLoopOutsideTransaction() throws InterruptedException {
         while (isContinue()) {
             log.info("'{}' now working in state {} (outside transaction)", getAgentId(), getAppState());
+            // Call the abstract method...
             switchByAppStateOutsideTransaction();
         }
     }
 
-    private void switchByAppStateOutsideTransaction() throws InterruptedException {
-        switch (getAppState().get()) {
-            case 0 -> {
-                incState();
-                enterTransaction();
-            }
-            case 4 -> {
-                incState();
-                setThreadTerminatedNicely();
-                setStop();
-            }
-            default -> waitOnAppState();
-        }
-    }
+    protected abstract void switchByAppStateOutsideTransaction() throws InterruptedException;
 
     public void enterTransaction() throws InterruptedException {
         try {
@@ -116,34 +105,6 @@ public class AgentRunnable_Alfa extends AgentRunnable {
         }
     }
 
-    private boolean isStatInsideTransaction() {
-        int state = getAppState().get();
-        return 0 < state && state < 4;
-    }
-
-    public void runStateMachineLoopInsideTransaction() throws InterruptedException {
-        while (isContinue() && isStatInsideTransaction()) {
-            log.info("'{}' now working in state {} (inside transaction)", getAgentId(), getAppState());
-            switchByAppStateInsideTransaction();
-        }
-    }
-
-    protected void switchByAppStateInsideTransaction() throws InterruptedException {
-        switch (getAppState().get()) {
-            case 1 -> {
-                if (shifted == Shifted.Yes) {
-                    getDb().updatePayloadById(xId, "UPDATED BY ALFA");
-                }
-                incState();
-            }
-            case 3 -> {
-                if (shifted == Shifted.No) {
-                    getDb().updatePayloadById(xId, "UPDATED BY ALFA");
-                }
-                incState();
-            }
-            default -> waitOnAppState();
-        }
-    }
+    protected abstract void runStateMachineLoopInsideTransaction() throws InterruptedException;
 
 }

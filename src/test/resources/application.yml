@@ -7,7 +7,7 @@ logging:
 spring:
   datasource:
     # url: jdbc:h2:mem:test_db
-    url: jdbc:h2:tcp://localhost//home/aloy/Spring/h2/databases/first
+    url: jdbc:h2:tcp://localhost//home/aloy/Documents/Work/Spring/h2/databases/first
     username: sa
     password: password
     driverClassName: org.h2.Driver

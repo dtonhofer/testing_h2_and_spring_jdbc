@@ -1,6 +1,9 @@
 package name.heavycarbon.h2_exercises.transactions.sql_timeout;
 
-import name.heavycarbon.h2_exercises.transactions.agent.*;
+import name.heavycarbon.h2_exercises.transactions.agent.Agent;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer;
+import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
+import name.heavycarbon.h2_exercises.transactions.agent.AppState;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
@@ -16,12 +19,11 @@ public class AgentContainer_SqlTimeout extends AgentContainer {
 
     public AgentContainer_SqlTimeout(
             @NotNull Db db,
-            @NotNull Isol isol,
-            @NotNull Setup setup,
-            @NotNull PrintException pex,
-            @NotNull TransactionalGateway txGw) {
-        final var alfa = new AgentRunnable_Alfa(db, appState, alfaId, isol, setup, pex, txGw);
-        final var bravo = new AgentRunnable_Bravo(db, appState, bravoId, isol, setup, pex, txGw);
+            @NotNull TransactionalGateway txGw,
+            @NotNull Config config,
+            @NotNull DbConfig dbConfig) {
+        final var alfa = new AgentRunnable_Alfa(db, appState, alfaId, txGw, config, dbConfig);
+        final var bravo = new AgentRunnable_Bravo(db, appState, bravoId, txGw, config, dbConfig);
         setUnmodifiableAgentMap(List.of(new Agent(alfa), new Agent(bravo)));
     }
 

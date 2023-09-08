@@ -1,16 +1,19 @@
 package name.heavycarbon.h2_exercises.transactions;
 
 import lombok.extern.slf4j.Slf4j;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
+import name.heavycarbon.h2_exercises.transactions.common.DualListOfStuff;
+import name.heavycarbon.h2_exercises.transactions.common.ListOfStuffHandling.WhatDo;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import name.heavycarbon.h2_exercises.transactions.db.SessionManip;
 import name.heavycarbon.h2_exercises.transactions.db.Stuff;
 import name.heavycarbon.h2_exercises.transactions.phantom_read.AgentContainer_PhantomRead;
-import name.heavycarbon.h2_exercises.transactions.phantom_read.AgentContainer_PhantomRead.PhantomicPredicate;
-import name.heavycarbon.h2_exercises.transactions.phantom_read.Setup;
+import name.heavycarbon.h2_exercises.transactions.phantom_read.Config;
+import name.heavycarbon.h2_exercises.transactions.phantom_read.Config.Op;
+import name.heavycarbon.h2_exercises.transactions.phantom_read.Config.PhantomicPredicate;
+import name.heavycarbon.h2_exercises.transactions.phantom_read.DbConfig;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -21,10 +24,12 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureJdbc;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
+
+import static name.heavycarbon.h2_exercises.transactions.common.ListOfStuffHandling.assertListEquality;
+import static name.heavycarbon.h2_exercises.transactions.common.ListOfStuffHandling.checkListEquality;
 
 // ---
 // "Phantom Reads" are a "strong" unsoundness that occur in isolation level READ_UNCOMMITTED and lower.
@@ -52,33 +57,40 @@ public class TestElicitingPhantomReads {
     private TransactionalGateway txGw;
 
     // ---
-    // Configuration about what to insert, delete, update
+    // Information about records that can be found in the test db
     // ---
 
-    private final Setup setup = new Setup();
-
-    // ---
+    private final DbConfig dbConfig = new DbConfig();
 
     private void setupDb() {
-        db.setupStuffTable(Db.AutoIncrementing.Yes, Db.CleanupFirst.Yes);
-        setup.initialStuff.forEach(db::insert);
+        db.rejuvenateSchema();
+        db.createStuffTable();
+        dbConfig.initialStuff.forEach(db::insert);
     }
 
     // ---
+    // JUnit gets the arguments for the test method from this
+    // ---
 
     private static Stream<Arguments> provideTestArgStream() {
-        // ...normally, one would expect unsoundness at these levels
-        // Set<Isol> unsoundIsols = new HashSet<>(List.of(Isol.READ_UNCOMMITTED, Isol.READ_COMMITTED, Isol.REPEATABLE_READ));
-        // ... but in H2, Phantom Reads already disappear at isolation level READ_COMMITTED. Thus:
-        Set<Isol> unsoundIsols = new HashSet<>(List.of(Isol.READ_UNCOMMITTED, Isol.READ_COMMITTED));
         List<Arguments> res = new ArrayList<>();
-        final int rounds = 1; // increase for heavier testing
-        for (int i=0;i<rounds;i++) {
-            for (Isol isol : List.of(Isol.READ_UNCOMMITTED, Isol.READ_COMMITTED, Isol.REPEATABLE_READ, Isol.SERIALIZABLE, Isol.SNAPSHOT)) {
-                for (Op op : List.of(Op.Insert, Op.Delete, Op.UpdateIntoPredicateSet, Op.UpdateOutOfPredicateSet)) {
-                    for (PhantomicPredicate pred : List.of(PhantomicPredicate.ByEnsemble, PhantomicPredicate.ByPayload, PhantomicPredicate.ByEnsembleAndPayload)) {
-                        Expected expected = unsoundIsols.contains(isol) ? Expected.PhantomRead : Expected.Soundness;
-                        res.add(Arguments.of(isol, op, pred, expected));
+        for (int i = 0; i < rounds; i++) {
+            for (Isol isol : Isol.values()) {
+                for (Op op : Op.values()) {
+                    for (PhantomicPredicate pred : PhantomicPredicate.values()) {
+                        // ...normally, one would expect unsoundness at these levels
+                        // ANSI READ (even) UNCOMMITTED, ANSI READ (only) COMMITTED, ANSI REPEATABLE READ
+                        // ... but in H2, Phantom Reads are already fixed at isolation level ANSI READ COMMITTED
+                        // - Either because my predicates are bad
+                        // - or because H2 is conservative (i.e. the implementation just fixes the problem
+                        //   at lower levels; and why not)
+                        final var expected = switch (isol) {
+                            case READ_UNCOMMITTED -> Expected.PhantomRead;
+                            case READ_COMMITTED -> Expected.PhantomRead;
+                            case REPEATABLE_READ -> Expected.Soundness; // UNEXPECTED!!
+                            default -> Expected.Soundness;
+                        };
+                        res.add(Arguments.of(new Config(isol, op, pred, PrintException.No), expected));
                     }
                 }
             }
@@ -87,188 +99,195 @@ public class TestElicitingPhantomReads {
     }
 
     // ---
+    // Increase this for running the test more than once in a loop
+    // ---
+
+    private final static int rounds = 100;
+
+    // ---
+    // The test method to call. As the annotation says, it gets its arguments from
+    // method "provideTestArgStream".
+    // ---
+
+    // TODO: Handle the cases which are "unexpectedly sound" separately, as for the "Non Repeatable Reads"
 
     @ParameterizedTest
     @MethodSource("provideTestArgStream")
-    void testPhantomRead(@NotNull Isol isol, @NotNull Op op, @NotNull PhantomicPredicate pred, @NotNull Expected expected) {
+    void testPhantomRead(@NotNull Config config, @NotNull Expected expected) {
         setupDb();
         // Initial setup as expected?
-        Assertions.assertThat(db.readAll()).isEqualTo(Stuff.sortById(setup.initialStuff));
+        Assertions.assertThat(db.readAll()).isEqualTo(Stuff.sortById(dbConfig.initialStuff));
         // Let's go!
-        log.info("STARTING: Phantom Read, isolation level {}, operation {}, predicate {}, expecting {}", isol, op, pred, expected);
-        PrintException pex = PrintException.Yes;
-        final var ac = new AgentContainer_PhantomRead(db, isol, op, pred, setup, pex, txGw);
+        log.info("STARTING: Phantom Read, isolation level {}, operation {}, predicate {}, expecting {}", config.isol(), config.op(), config.phantomicPredicate(), expected);
+        final var ac = new AgentContainer_PhantomRead(db, txGw, config, dbConfig);
         {
             ac.startAll();
             ac.joinAll();
         }
         // None of the threads should have terminated badly!
-        Assertions.assertThat(ac.isAnyThreadTerminatedBadly()).isFalse();
-        // Result exist and can be extracted
+        Assertions.assertThat(ac.isAnyAgentTerminatedBadly()).isFalse();
+        // Results exist and can be extracted!
         Assertions.assertThat(ac.getReaderRunnable().getResult()).isPresent();
-        List<Stuff> result1 = ac.getReaderRunnable().getResult().orElseThrow().getResult1();
-        List<Stuff> result2 = ac.getReaderRunnable().getResult().orElseThrow().getResult2();
+        // So let's extract!
+        final DualListOfStuff dual = ac.getReaderRunnable().getResult().orElseThrow();
+        final List<Stuff> result1 = Collections.unmodifiableList(dual.getResult1());
+        final List<Stuff> result2 = Collections.unmodifiableList(dual.getResult2());
         switch (expected) {
-            case PhantomRead -> expectPhantomRead(op, pred, result1, result2);
-            case Soundness -> expectSoundness(pred, result1, result2);
+            case PhantomRead -> assertPhantomRead(config, result1, result2);
+            case Soundness -> assertSoundness(config, result1, result2);
         }
         // Final database contents as expected?
-        finallyExpectWhatTheModifierDid(op);
-        log.info("OK: Phantom Read, isolation level {}, operation {}, predicate {}, expected {}", isol, op, pred, expected);
+        finallyExpectWhatTheModifierDid(config.op());
+        log.info("OK: Phantom Read, isolation level {}, operation {}, predicate {}, expected {}", config.isol(), config.op(), config.phantomicPredicate(), expected);
     }
 
-    private void expectPhantomRead(@NotNull Op op, @NotNull PhantomicPredicate pred, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2) {
-        expectPhantomRead_firstRead(pred, result1);
-        expectPhantomRead_secondRead(op, pred, result2);
-    }
+    // ---
+    // In 0.6% of the cases, we get unexpected "soundness" in READ_COMMITTED!
+    // H2 is unexpectedly stricter than necessary. We move such cases to a special assertion failure.
+    // ---
 
-    private void expectPhantomRead_firstRead(@NotNull PhantomicPredicate pred, @NotNull List<Stuff> result1) {
-        List<Stuff> expectedStuff1 = switch (pred) {
-            // reading by selecting on column "ensemble" (selecting those belonging to ensemble one)
-            case ByEnsemble -> setup.getInitialRecordsInDesiredEnsemble();
-            // reading by selecting on column "payload" (selecting those ending in "AA")
-            case ByPayload -> setup.getInitialRecordsWithMatchingSuffix();
-            // reading by selecting on both columns "ensemble" and "payload"
-            case ByEnsembleAndPayload -> setup.getInitialRecordsInDesiredEnsembleWithMatchingSuffix();
-            default -> throw new IllegalArgumentException("Unhandled predicate " + pred);
-        };
-        Assertions.assertThat(Stuff.sortById(result1)).isEqualTo(Stuff.sortById(expectedStuff1));
-    }
-
-    private void expectPhantomRead_secondRead(@NotNull Op op, @NotNull PhantomicPredicate pred, @NotNull List<Stuff> result2) {
-        switch (op) {
-            case Insert -> {
-                // A record is inserted and appears in the second read!
-                switch (pred) {
-                    case ByEnsemble -> {
-                        List<Stuff> expectedStuff2 = setup.getInitialRecordsInDesiredEnsemble_AddRecord(setup.insertMe);
-                        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff2));
-                    }
-                    case ByPayload -> {
-                        List<Stuff> expectedStuff2 = setup.getInitialRecordsWithMatchingSuffix_AddRecord(setup.insertMe);
-                        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff2));
-                    }
-                    case ByEnsembleAndPayload -> {
-                        List<Stuff> expectedStuff2 = setup.getInitialRecordsInDesiredEnsembleWithMatchingSuffix_AddRecord(setup.insertMe);
-                        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff2));
-                    }
-                    default -> throw new IllegalArgumentException("Unhandled pred " + pred);
-                }
-            }
-            case Delete -> {
-                // A record is deleted and disappears in the second read!
-                switch (pred) {
-                    case ByEnsemble -> {
-                        List<Stuff> expectedStuff2 = setup.getInitialRecordsInDesiredEnsemble_RemoveRecord(setup.deleteMe);
-                        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff2));
-                    }
-                    case ByPayload -> {
-                        List<Stuff> expectedStuff2 = setup.getInitialRecordsWithMatchingSuffix_RemoveRecord(setup.deleteMe);
-                        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff2));
-                    }
-                    case ByEnsembleAndPayload -> {
-                        List<Stuff> expectedStuff2 = setup.getInitialRecordsInDesiredEnsembleWithMatchingSuffix_RemoveRecord(setup.deleteMe);
-                        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff2));
-                    }
-                    default -> throw new IllegalArgumentException("Unhandled pred " + pred);
-                }
-
-            }
-            case UpdateIntoPredicateSet -> {
-                // A record is updated & moved into the set, it becomes visible immediately!
-                switch (pred) {
-                    case ByEnsemble -> {
-                        List<Stuff> expectedStuff2 = setup.getInitialRecordsInDesiredEnsemble_AddRecord(setup.updateForMovingInChanged);
-                        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff2));
-                    }
-                    case ByPayload -> {
-                        List<Stuff> expectedStuff2 = setup.getInitialRecordsWithMatchingSuffix_AddRecord(setup.updateForMovingInChanged);
-                        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff2));
-                    }
-                    case ByEnsembleAndPayload -> {
-                        List<Stuff> expectedStuff2 = setup.getInitialRecordsInDesiredEnsembleWithMatchingSuffix_AddRecord(setup.updateForMovingInChanged);
-                        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff2));
-                    }
-                    default -> throw new IllegalArgumentException("Unhandled pred " + pred);
-                }
-            }
-            case UpdateOutOfPredicateSet -> {
-                // A record is updated & moved out of the set, it becomes invisible immediately!
-                switch (pred) {
-                    case ByEnsemble -> {
-                        List<Stuff> expectedStuff2 = setup.getInitialRecordsInDesiredEnsemble_RemoveRecord(setup.updateForMovingOut);
-                        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff2));
-                    }
-                    case ByPayload -> {
-                        List<Stuff> expectedStuff2 = setup.getInitialRecordsWithMatchingSuffix_RemoveRecord(setup.updateForMovingOut);
-                        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff2));
-                    }
-                    case ByEnsembleAndPayload -> {
-                        List<Stuff> expectedStuff2 = setup.getInitialRecordsInDesiredEnsembleWithMatchingSuffix_RemoveRecord(setup.updateForMovingOut);
-                        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff2));
-                    }
-                    default -> throw new IllegalArgumentException("Unhandled pred " + pred);
-                }
-            }
-            default -> throw new IllegalArgumentException("Unhandled op " + op);
+    private void assertPhantomRead(@NotNull Config config, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2) {
+        if (config.isol() == Isol.READ_COMMITTED && checkSoundness(config, result1, result2, WhatDo.Check)) {
+            Assertions.fail("Unexpectedly stronger isolation level than '" + config.isol() + "' for '" + config.op() + "'");
+        } else {
+            assertPhantomRead_firstPart(config, result1);
+            assertPhantomRead_secondPart(config, result2);
         }
+    }
+
+    private void assertSoundness(@NotNull Config config, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2) {
+        checkSoundness(config, result1, result2, WhatDo.Assert);
+    }
+
+    private void assertPhantomRead_firstPart(@NotNull Config config, @NotNull List<Stuff> actual) {
+        final List<Stuff> expected = switch (config.phantomicPredicate()) {
+            case ByEnsemble -> dbConfig.getInitialRecordsWithDesiredEnsemble();
+            case BySuffix -> dbConfig.getInitialRecordsWithDesiredSuffix();
+            case ByEnsembleAndSuffix -> dbConfig.getInitialRecordsWithDesiredEnsembleAndSuffix();
+        };
+        assertListEquality(actual, expected);
+    }
+
+    // ---
+
+    private void assertPhantomRead_secondPart(@NotNull Config config, @NotNull List<Stuff> actual) {
+        switch (config.op()) {
+            case Insert -> assertPhantomRead_secondPart_insert(config, actual); //
+            case Delete -> assertPhantomRead_secondPart_delete(config, actual); //
+            case UpdateInto -> assertPhantomRead_secondPart_updatedInto(config, actual); //
+            case UpdateOutOf -> assertPhantomRead_secondReadPart_updateOutOf(config, actual); //
+            default -> throw new IllegalArgumentException("Unhandled op " + config.op());
+        }
+    }
+
+    // ---
+    // A record is inserted and appears in the second read!
+    // ---
+
+    private void assertPhantomRead_secondPart_insert(@NotNull Config config, @NotNull List<Stuff> actual) {
+        final PhantomicPredicate pp = config.phantomicPredicate();
+        final Stuff ins = dbConfig.insertMe;
+        final List<Stuff> expected = switch (pp) {
+            case ByEnsemble -> dbConfig.getInitialRecordsWithDesiredEnsembleAndAdd(ins);
+            case BySuffix -> dbConfig.getInitialRecordsWithDesiredSuffixAndAdd(ins);
+            case ByEnsembleAndSuffix -> dbConfig.getInitialRecordsWithDesiredEnsembleAndSuffixAndAdd(ins);
+        };
+        assertListEquality(actual, expected);
+    }
+
+    // ---
+    // A record is deleted and disappears in the second read!
+    // ---
+
+    private void assertPhantomRead_secondPart_delete(@NotNull Config config, @NotNull List<Stuff> actual) {
+        final PhantomicPredicate pp = config.phantomicPredicate();
+        final Stuff del = dbConfig.deleteMe;
+        final List<Stuff> expected = switch (pp) {
+            case ByEnsemble -> dbConfig.getInitialRecordsWithDesiredEnsembleAndRemove(del);
+            case BySuffix -> dbConfig.getInitialRecordsWithDesiredSuffixAndRemove(del);
+            case ByEnsembleAndSuffix -> dbConfig.getInitialRecordsWithDesiredEnsembleAndSuffixAndRemove(del);
+        };
+        assertListEquality(actual, expected);
+    }
+
+    // ---
+    // A record is updated & moved into the set, it becomes visible immediately!
+    // ---
+
+    private void assertPhantomRead_secondPart_updatedInto(@NotNull Config config, @NotNull List<Stuff> actual) {
+        final PhantomicPredicate pp = config.phantomicPredicate();
+        final Stuff updated = dbConfig.updateForMovingInChanged;
+        final List<Stuff> expected = switch (pp) {
+            case ByEnsemble -> dbConfig.getInitialRecordsWithDesiredEnsembleAndAdd(updated);
+            case BySuffix -> dbConfig.getInitialRecordsWithDesiredSuffixAndAdd(updated);
+            case ByEnsembleAndSuffix -> dbConfig.getInitialRecordsWithDesiredEnsembleAndSuffixAndAdd(updated);
+        };
+        assertListEquality(actual, expected);
+    }
+
+    // ---
+    // A record is updated & moved out of the set, it becomes invisible immediately!
+    // ---
+
+    private void assertPhantomRead_secondReadPart_updateOutOf(@NotNull Config config, @NotNull List<Stuff> actual) {
+        final PhantomicPredicate pp = config.phantomicPredicate();
+        final Stuff update = dbConfig.updateForMovingOut;
+        final List<Stuff> expected = switch (pp) {
+            case ByEnsemble -> dbConfig.getInitialRecordsWithDesiredEnsembleAndRemove(update);
+            case BySuffix -> dbConfig.getInitialRecordsWithDesiredSuffixAndRemove(update);
+            case ByEnsembleAndSuffix -> dbConfig.getInitialRecordsWithDesiredEnsembleAndSuffixAndRemove(update);
+        };
+        assertListEquality(actual, expected);
     }
 
     // ---
     // "Soundness" means we just see what's initially there and nothing changes during the transaction!
-    // But what is initially there depends on the predicate.
+    // But what is initially there depends on the predicate of course.
     // ---
 
-    private void expectSoundness(@NotNull PhantomicPredicate pred, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2) {
-        List<Stuff> expected = switch (pred) {
+    private boolean checkSoundness(@NotNull Config config, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2, @NotNull WhatDo whatDo) {
+        final PhantomicPredicate pp = config.phantomicPredicate();
+        final List<Stuff> expected = switch (pp) {
             // reading by selecting on column "ensemble" (selecting those belonging to ensemble one)
-            case ByEnsemble -> setup.getInitialRecordsInDesiredEnsemble();
+            case ByEnsemble -> dbConfig.getInitialRecordsWithDesiredEnsemble();
             // reading by selecting on column "payload" (selecting those ending in "AA")
-            case ByPayload -> setup.getInitialRecordsWithMatchingSuffix();
+            case BySuffix -> dbConfig.getInitialRecordsWithDesiredSuffix();
             // reading by selecting on both columns "ensemble" and "payload"
-            case ByEnsembleAndPayload -> setup.getInitialRecordsInDesiredEnsembleWithMatchingSuffix();
-            default -> throw new IllegalArgumentException("Unhandled pred " + pred);
+            case ByEnsembleAndSuffix -> dbConfig.getInitialRecordsWithDesiredEnsembleAndSuffix();
         };
         // the initial result set does NOT CHANGE upon second read!
-        Assertions.assertThat(Stuff.sortById(result1)).isEqualTo(Stuff.sortById(expected));
-        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expected));
+        if (whatDo == WhatDo.Check) {
+            return checkListEquality(result1, expected) && checkListEquality(result2, expected);
+        } else {
+            assertListEquality(result1, expected);
+            assertListEquality(result2, expected);
+            return true;
+        }
     }
 
     // ---
 
     private void finallyExpectWhatTheModifierDid(@NotNull Op op) {
-        final List<Stuff> actualStuff = db.readAll();
-        final List<Stuff> expectedStuff = computeWhatTheModifierDid(op);
-        Assertions.assertThat(Stuff.sortById(actualStuff)).isEqualTo(Stuff.sortById(expectedStuff));
+        final List<Stuff> actual = db.readAll();
+        final List<Stuff> expected = computeWhatTheModifierDid(op);
+        assertListEquality(actual, expected);
     }
 
     // ---
 
     private List<Stuff> computeWhatTheModifierDid(@NotNull Op op) {
-        List<Stuff> res;
-        switch (op) {
-            case UpdateIntoPredicateSet -> {
-                // "setup.updateForMovingIn" was updated
-                res = setup.getInitialRecords_RemoveRecord(setup.updateForMovingIn);
-                res.add(setup.updateForMovingInChanged);
-            }
-            case UpdateOutOfPredicateSet -> {
-                // "setup.updateForMovingOut" was updated
-                res = setup.getInitialRecords_RemoveRecord(setup.updateForMovingOut);
-                res.add(setup.updateForMovingOutChanged);
-            }
-            case Insert -> {
-                // "setup.insertMe" was inserted
-                res = setup.getInitialRecords_AddRecord(setup.insertMe);
-            }
-            case Delete -> {
-                // "setup.deleteMe" was deleted
-                res = setup.getInitialRecords_RemoveRecord(setup.deleteMe);
-            }
-            default -> throw new IllegalArgumentException("Unhandled op " + op);
-        }
-        res = Stuff.sortById(res); // not really needed
-        return res;
+        return switch (op) {
+            // "setup.updateForMovingIn" was updated
+            case UpdateInto ->
+                    dbConfig.getInitialRecordsAndReplace(dbConfig.updateForMovingIn, dbConfig.updateForMovingInChanged);
+            // "setup.updateForMovingOut" was updated
+            case UpdateOutOf ->
+                    dbConfig.getInitialRecordsAndReplace(dbConfig.updateForMovingOut, dbConfig.updateForMovingOutChanged);
+            // "dbConfig.insertMe" was inserted
+            case Insert -> dbConfig.getInitialRecordsAndAdd(dbConfig.insertMe);
+            // "dbConfig.deleteMe" was deleted
+            case Delete -> dbConfig.getInitialRecordsAndRemove(dbConfig.deleteMe);
+        };
     }
 
 }

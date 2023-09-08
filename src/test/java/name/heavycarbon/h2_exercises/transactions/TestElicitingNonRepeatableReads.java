@@ -1,12 +1,17 @@
 package name.heavycarbon.h2_exercises.transactions;
 
 import lombok.extern.slf4j.Slf4j;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
+import name.heavycarbon.h2_exercises.transactions.common.ListOfStuffHandling.WhatDo;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
-import name.heavycarbon.h2_exercises.transactions.db.*;
+import name.heavycarbon.h2_exercises.transactions.db.Db;
+import name.heavycarbon.h2_exercises.transactions.db.Isol;
+import name.heavycarbon.h2_exercises.transactions.db.SessionManip;
+import name.heavycarbon.h2_exercises.transactions.db.Stuff;
 import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.AgentContainer_NonRepeatableRead;
-import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.Setup;
+import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.Config;
+import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.Config.Op;
+import name.heavycarbon.h2_exercises.transactions.non_repeatable_read.DbConfig;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -17,8 +22,12 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureJdbc;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
+
+import static name.heavycarbon.h2_exercises.transactions.common.ListOfStuffHandling.assertListEquality;
+import static name.heavycarbon.h2_exercises.transactions.common.ListOfStuffHandling.checkListEquality;
 
 // ---
 // A "non-repeatable read" happens when transaction T1 reads data item D, another transaction T2
@@ -47,142 +56,153 @@ public class TestElicitingNonRepeatableReads {
     @Autowired
     private TransactionalGateway txGw;
 
-    // ---
-    // Information on how to set up the database and what to modify
-    // ---
-
-    private static final StuffId initRowId = new StuffId(100);
-
-    // initial row in database
-    private static final Stuff initRow = new Stuff(initRowId, EnsembleId.Two, "INITIAL");
-
-    // the initRow will be updated to this
-    private static final Stuff updateRow = new Stuff(initRowId, EnsembleId.Two, "UPDATED");
-
-    // this row will be additionally inserted
-    private static final Stuff insertRow = new Stuff(new StuffId(200), EnsembleId.Two, "INSERTED");
-
-    // this row is initially in the database and will be deleted
-    private static final Stuff deleteRow = new Stuff(new StuffId(300), EnsembleId.Two, "DELETED");
+    private final DbConfig dbConfig = new DbConfig();
 
     // ---
 
     private void setupDb() {
-        db.setupStuffTable(Db.AutoIncrementing.Yes, Db.CleanupFirst.Yes);
-        db.insert(initRow);
-        db.insert(deleteRow);
+        db.rejuvenateSchema();
+        db.createStuffTable();
+        db.insert(dbConfig.initRow);
+        db.insert(dbConfig.deleteRow);
     }
 
+    // ---
+    // JUnit gets the arguments for the test method from this
     // ---
 
     private static Stream<Arguments> provideTestArgStream() {
         List<Arguments> res = new ArrayList<>();
-        final int rounds = 1; // increase for heavier testing
         for (int i = 0; i < rounds; i++) {
-            // "Unexpected changes to record" problem goes away at isolation level ANSI "REPEATABLE READ"
-            res.add(Arguments.of(Isol.READ_UNCOMMITTED, Op.Update, Expected.NonRepeatableRead));
-            res.add(Arguments.of(Isol.READ_COMMITTED, Op.Update, Expected.NonRepeatableRead));
-            res.add(Arguments.of(Isol.REPEATABLE_READ, Op.Update, Expected.Soundness));
-            res.add(Arguments.of(Isol.SERIALIZABLE, Op.Update, Expected.Soundness));
-            res.add(Arguments.of(Isol.SNAPSHOT, Op.Update, Expected.Soundness));
-            // "Unexpected appearance of a missing record" goes away at isolation level ANSI "REPEATABLE READ"
-            // In a sense this is a "phantom read" with the predicate "selection by id" but the problem
-            // actually goes away in isolation level "ANSI REPEATABLE READ".
-            res.add(Arguments.of(Isol.READ_UNCOMMITTED, Op.Insert, Expected.NonRepeatableRead));
-            res.add(Arguments.of(Isol.READ_COMMITTED, Op.Insert, Expected.NonRepeatableRead));
-            res.add(Arguments.of(Isol.REPEATABLE_READ, Op.Insert, Expected.Soundness));
-            res.add(Arguments.of(Isol.SERIALIZABLE, Op.Insert, Expected.Soundness));
-            res.add(Arguments.of(Isol.SNAPSHOT, Op.Insert, Expected.Soundness));
-            // "Unexpected disappearance of a record" goes away at isolation level ANSI "REPEATABLE READ"
-            // In a sense this is a "phantom read" with the predicate "selection by id" but the problem
-            // actually goes away in isolation level "ANSI REPEATABLE READ".
-            res.add(Arguments.of(Isol.READ_UNCOMMITTED, Op.Delete, Expected.NonRepeatableRead));
-            res.add(Arguments.of(Isol.READ_COMMITTED, Op.Delete, Expected.NonRepeatableRead));
-            res.add(Arguments.of(Isol.REPEATABLE_READ, Op.Delete, Expected.Soundness));
-            res.add(Arguments.of(Isol.SERIALIZABLE, Op.Delete, Expected.Soundness));
-            res.add(Arguments.of(Isol.SNAPSHOT, Op.Delete, Expected.Soundness));
+            for (Isol isol : Isol.values()) {
+                for (Op op : List.of(Op.Insert, Op.Update, Op.Delete)) {
+                    // We expect "Soundness" of the operation (i.e. NO "non-repeatable read" aka
+                    // "re-reading of data changed & committed by another transaction becomes
+                    // visible in current transaction") in all cases except in isolation levels
+                    // "ANSI READ (even) UNCOMMITTED" and "ANSI READ (only) COMMITTED"
+                    // This covers:
+                    // "Unexpected changes to record"
+                    // "Unexpected appearance of a missing record" (In a sense this is a "phantom read" with the predicate "selection by id")
+                    // "Unexpected disappearance of a record" (In a sense this is a "phantom read" with the predicate "selection by id")
+                    final var expected = switch (isol) {
+                        case READ_UNCOMMITTED -> Expected.NonRepeatableRead;
+                        case READ_COMMITTED -> Expected.NonRepeatableRead;
+                        default -> Expected.Soundness;
+                    };
+                    res.add(Arguments.of(new Config(isol, op, PrintException.No), expected));
+                }
+            }
         }
         return res.stream();
     }
 
+    // ---
+    // Increase this for running the test more than once in a loop
+    // ---
+
+    private final static int rounds = 100;
+
+    // ---
+    // The test method to call. As the annotation says, it gets its arguments from
+    // method "provideTestArgStream".
+    // ---
+
     @ParameterizedTest
     @MethodSource("provideTestArgStream")
-    void testNonRepeatableRead(@NotNull Isol isol, @NotNull Op op, @NotNull Expected expected) {
+    void testNonRepeatableRead(@NotNull Config config, @NotNull Expected expected) {
         setupDb();
-        log.info("STARTING: Non-Repeatable Read, isolation level {}, operation {}", isol, op);
-        final PrintException pex = PrintException.No;
-        final var ac = new AgentContainer_NonRepeatableRead(db, isol, op, new Setup(initRow, updateRow, insertRow, deleteRow), pex, txGw);
+        log.info("STARTING: Non-Repeatable Read, isolation level {}, operation {}", config.isol(), config.op());
+        final var ac = new AgentContainer_NonRepeatableRead(db, txGw, config, dbConfig);
         {
             ac.startAll();
             ac.joinAll();
         }
         // None of the threads should have terminated badly!
-        Assertions.assertThat(ac.isAnyThreadTerminatedBadly()).isFalse();
+        Assertions.assertThat(ac.isAnyAgentTerminatedBadly()).isFalse();
         // Result exist and can be extracted
         Assertions.assertThat(ac.getReaderRunnable().getResult()).isPresent();
-        List<Stuff> result1 = ac.getReaderRunnable().getResult().orElseThrow().getResult1();
-        List<Stuff> result2 = ac.getReaderRunnable().getResult().orElseThrow().getResult2();
+        // So extract!
+        final List<Stuff> result1 = Collections.unmodifiableList(ac.getReaderRunnable().getResult().orElseThrow().getResult1());
+        final List<Stuff> result2 = Collections.unmodifiableList(ac.getReaderRunnable().getResult().orElseThrow().getResult2());
         switch (expected) {
-            case NonRepeatableRead -> expectNonRepeatableRead(op, result1, result2);
-            case Soundness -> expectSoundness(op, result1, result2);
+            case NonRepeatableRead -> assertNonRepeatableRead(config, result1, result2);
+            case Soundness -> assertSoundness(config, result1, result2);
         }
         // Final database contents as expected?
-        finallyExpectWhatTheModifierDid(op);
-        log.info("OK: Non-Repeatable Read, isolation level {}, operation {}, expected {}", isol, op, expected);
+        finallyExpectWhatTheModifierDid(config.op());
+        log.info("OK: Non-Repeatable Read, isolation level {}, operation {}, expected {}", config.isol(), config.op(), expected);
     }
 
-    private void expectNonRepeatableRead(@NotNull Op op, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2) {
-        List<Stuff> expectedStuff1;
-        List<Stuff> expectedStuff2;
-        switch (op) {
+    private void assertSoundness(@NotNull Config config, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2) {
+        checkSoundness(config.op(), result1, result2, WhatDo.Assert);
+    }
+
+    private void assertNonRepeatableRead(@NotNull Config config, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2) {
+        List<Stuff> expected1;
+        List<Stuff> expected2;
+        switch (config.op()) {
             case Update -> {
                 // "initRow" was updated to "updateRow" and this was visible (selection by id)
-                expectedStuff1 = List.of(initRow);
-                expectedStuff2 = List.of(updateRow);
+                expected1 = List.of(dbConfig.initRow);
+                expected2 = List.of(dbConfig.updateRow);
             }
             case Insert -> {
                 // "insertRow" was inserted and this was visible (selection by id)
-                expectedStuff1 = List.of();
-                expectedStuff2 = List.of(insertRow);
+                expected1 = List.of();
+                expected2 = List.of(dbConfig.insertRow);
             }
             case Delete -> {
                 // "deleteRow" was deleted and this was visible
-                expectedStuff1 = List.of(deleteRow);
-                expectedStuff2 = List.of();
+                expected1 = List.of(dbConfig.deleteRow);
+                expected2 = List.of();
             }
-            default -> throw new IllegalArgumentException("Unhandled op " + op);
+            default -> throw new IllegalArgumentException("Unhandled op " + config.op());
         }
-        Assertions.assertThat(Stuff.sortById(result1)).isEqualTo(Stuff.sortById(expectedStuff1));
-        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff2));
+        //
+        // Sometimes H2 unexpectedly (0.6%) isolates the transaction as if we were are higher isolation levels!
+        // Generate a specific assertion error for that case!
+        //
+        final boolean specialCheck = true;
+        if (specialCheck) {
+            if (config.isol() == Isol.READ_COMMITTED && checkSoundness(config.op(), result1, result2, WhatDo.Check)) {
+                Assertions.fail("Unexpectedly stronger isolation level than '" + config.isol() + "' for '" + config.op() + "'");
+            }
+        }
+        assertListEquality(result1, expected1);
+        assertListEquality(result2, expected2);
     }
 
-    private void expectSoundness(@NotNull Op op, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2) {
+    private boolean checkSoundness(@NotNull Op op, @NotNull List<Stuff> result1, @NotNull List<Stuff> result2, @NotNull WhatDo whatDo) {
         // we just see what's initially there and nothing changes during the transaction
-        List<Stuff> expectedStuff = switch (op) {
+        List<Stuff> expected = switch (op) {
             // "initRow" was updated but none of that was visible (selection by id)
-            case Update -> List.of(initRow);
+            case Update -> List.of(dbConfig.initRow);
             // "insertRow" was inserted but none of that was visible (selection by id)
             case Insert -> List.of();
             // "deleteRow" was deleted but none of that was visible (selection by id)
-            case Delete -> List.of(deleteRow);
+            case Delete -> List.of(dbConfig.deleteRow);
             default -> throw new IllegalArgumentException("Unhandled op " + op);
         };
-        Assertions.assertThat(Stuff.sortById(result1)).isEqualTo(Stuff.sortById(expectedStuff));
-        Assertions.assertThat(Stuff.sortById(result2)).isEqualTo(Stuff.sortById(expectedStuff));
+        if (whatDo == WhatDo.Check) {
+            return checkListEquality(result1, expected) && checkListEquality(result2, expected);
+        } else {
+            assertListEquality(result1, expected);
+            assertListEquality(result2, expected);
+            return true;
+        }
     }
 
     private void finallyExpectWhatTheModifierDid(@NotNull Op op) {
         List<Stuff> actualStuff = db.readAll();
         List<Stuff> expectedStuff = switch (op) {
             // "initRow" was updated to "updateRow"
-            case Update -> expectedStuff = List.of(updateRow, deleteRow);
+            case Update -> List.of(dbConfig.updateRow, dbConfig.deleteRow);
             // "insertRow" was inserted
-            case Insert -> expectedStuff = List.of(initRow, deleteRow, insertRow);
+            case Insert -> List.of(dbConfig.initRow, dbConfig.deleteRow, dbConfig.insertRow);
             // "deleteRow" was deleted
-            case Delete -> expectedStuff = List.of(initRow);
-            default -> throw new IllegalArgumentException("Unhandled op " + op);
+            case Delete -> List.of(dbConfig.initRow);
         };
-        Assertions.assertThat(Stuff.sortById(actualStuff)).isEqualTo(Stuff.sortById(expectedStuff));
+        assertListEquality(actualStuff, expectedStuff);
     }
 
 }

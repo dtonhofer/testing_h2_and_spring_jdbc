@@ -2,14 +2,11 @@ package name.heavycarbon.h2_exercises.transactions.sql_timeout;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer;
 import name.heavycarbon.h2_exercises.transactions.agent.AgentId;
 import name.heavycarbon.h2_exercises.transactions.agent.AppState;
-import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.AgentRunnableWithAllActionsInsideTransaction;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
-import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import name.heavycarbon.h2_exercises.transactions.db.Stuff;
 import org.jetbrains.annotations.NotNull;
 
@@ -19,7 +16,8 @@ import java.time.Instant;
 @Slf4j
 public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransaction {
 
-    private final @NotNull Setup setup;
+    @NotNull
+    private final DbConfig dbConfig;
 
     @Getter
     private Exception exceptionSeen = null;
@@ -30,27 +28,26 @@ public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransa
     public AgentRunnable_Bravo(@NotNull Db db,
                                @NotNull AppState appState,
                                @NotNull AgentId agentId,
-                               @NotNull Isol isol,
-                               @NotNull Setup setup,
-                               @NotNull PrintException pex,
-                               @NotNull TransactionalGateway txGw) {
-        super(db, appState, agentId, isol, AgentContainer.Op.Unset, pex, txGw);
-        this.setup = setup;
+                               @NotNull TransactionalGateway txGw,
+                               @NotNull Config config,
+                               @NotNull DbConfig dbConfig) {
+        super(db, appState, agentId, config.isol(), config.pex(), txGw);
+        this.dbConfig = dbConfig;
     }
 
     protected void switchByAppState() throws InterruptedException {
         switch (getAppState().get()) {
             case 1 -> {
                 //getDb().updatePayloadById(setup.stuff_b().getId(), "BRAVO WAS HERE");
-                incState();
+                incAppState();
             }
             case 3 -> {
-                readInState3 = getDb().readById(setup.stuff_x().getId()).orElseThrow();
+                readInState3 = dbConfig.readX(getDb());
                 // increment state immediately so that "alfa" can actually continue when this thread dies
-                incState();
+                incAppState();
                 updatePayloadByIdExpectingException();
                 log.info("'{}' did not end with an exception!?", getAgentId());
-                setThreadTerminatedNicely();
+                setAgentTerminatedNicely();
                 setStop();
             }
             default -> waitOnAppState();
@@ -80,7 +77,7 @@ public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransa
         final Instant whenStarted = Instant.now();
         try {
             // >>>>
-            getDb().updatePayloadById(setup.stuff_x().getId(), "UPDATED BY BRAVO");
+            dbConfig.updateX(getDb(), dbConfig.updateString_bravo_did_x);
             // <<<<
         } catch (Exception ex) {
             this.exceptionSeen = ex;

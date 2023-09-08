@@ -3,7 +3,6 @@ package name.heavycarbon.h2_exercises.transactions.common;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.*;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import org.jetbrains.annotations.NotNull;
@@ -24,18 +23,22 @@ public abstract class AgentRunnableWithAllActionsInsideTransaction extends Agent
                                                         @NotNull AppState appState,
                                                         @NotNull AgentId agentId,
                                                         @NotNull Isol isol,
-                                                        @NotNull Op op,
                                                         @NotNull PrintException pex,
                                                         @NotNull TransactionalGateway txGw) {
-        super(db, appState, agentId, isol, op);
+        super(db, appState, agentId, isol);
         this.txGw = txGw;
         this.pex = pex;
     }
 
+    protected void startMessage() {
+        log.info("'{}' starting", getAgentId());
+        log.info("'{}' isolation level = '{}'", getAgentId(), getIsol());
+    }
+
     @Override
     public void run() {
-        setThreadStarted();
-        log.info("'{}' starting.", getAgentId());
+        setAgentStarted();
+        startMessage();
         Randomizer.randomizeStartup(); // not really needed
         try {
             enterTransaction();
@@ -53,8 +56,7 @@ public abstract class AgentRunnableWithAllActionsInsideTransaction extends Agent
             log.info("'{}' entering transaction.", getAgentId());
             // call a method marked @Transactional on an instance injected by Spring
             txGw.wrapIntoTransaction(this::syncOnAppState, getAgentId(), getIsol());
-        }
-        finally {
+        } finally {
             log.info("'{}' out of transaction.", getAgentId());
         }
     }
@@ -67,8 +69,7 @@ public abstract class AgentRunnableWithAllActionsInsideTransaction extends Agent
                 log.info("'{}' in critical section.", getAgentId());
                 catchInterruptedExceptionFromStateMachineLoop();
             }
-        }
-        finally {
+        } finally {
             log.info("'{}' out of critical section.", getAgentId());
         }
     }

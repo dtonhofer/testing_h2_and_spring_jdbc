@@ -1,13 +1,16 @@
 package name.heavycarbon.h2_exercises.transactions;
 
 import lombok.extern.slf4j.Slf4j;
-import name.heavycarbon.h2_exercises.transactions.agent.AgentContainer.Op;
+import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
-import name.heavycarbon.h2_exercises.transactions.db.*;
-import name.heavycarbon.h2_exercises.transactions.db.Db.AutoIncrementing;
-import name.heavycarbon.h2_exercises.transactions.db.Db.CleanupFirst;
+import name.heavycarbon.h2_exercises.transactions.db.Db;
+import name.heavycarbon.h2_exercises.transactions.db.Isol;
+import name.heavycarbon.h2_exercises.transactions.db.SessionManip;
+import name.heavycarbon.h2_exercises.transactions.db.Stuff;
 import name.heavycarbon.h2_exercises.transactions.dirty_read.AgentContainer_DirtyRead;
-import name.heavycarbon.h2_exercises.transactions.dirty_read.Setup;
+import name.heavycarbon.h2_exercises.transactions.dirty_read.Config;
+import name.heavycarbon.h2_exercises.transactions.dirty_read.Config.Op;
+import name.heavycarbon.h2_exercises.transactions.dirty_read.DbConfig;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,6 +21,7 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureJdbc;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -49,88 +53,76 @@ public class TestElicitingDirtyReads {
     @Autowired
     private TransactionalGateway txGw;
 
-    // ---
-    // Information on how to set up the database and what to modify
-    // ---
-
-    private static final StuffId initRowId = new StuffId(100);
-
-    // initial row in database
-    private static final Stuff initRow = new Stuff(initRowId, EnsembleId.Two, "INIT");
-
-    // the initRow will be updated to this
-    private static final Stuff updateRow = new Stuff(initRowId, EnsembleId.Two, "XXX");
-
-    // this row will be additionally inserted
-    private static final Stuff insertRow = new Stuff(200, EnsembleId.Two, "INSERT");
-
-    // this row is initially in the database and will be deleted
-    private static final Stuff deleteRow = new Stuff(300, EnsembleId.Two, "DELETE");
+    private DbConfig dbConfig = new DbConfig();
 
     // ---
 
     private void setupDb() {
-        db.setupStuffTable(AutoIncrementing.Yes, CleanupFirst.Yes);
-        db.insert(initRow);
-        db.insert(deleteRow);
+        db.rejuvenateSchema();
+        db.createStuffTable();
+        db.insert(dbConfig.initRow);
+        db.insert(dbConfig.deleteRow);
     }
 
     // ---
-
+    // JUnit gets the arguments for the test method from this
+    // ---
 
     private static Stream<Arguments> provideTestArgStream() {
         List<Arguments> res = new ArrayList<>();
-        final int rounds = 1; // increase for heavier testing
         for (int i = 0; i < rounds; i++) {
-            res.add(Arguments.of(Isol.READ_UNCOMMITTED, Op.Insert, Expected.DirtyRead));
-            res.add(Arguments.of(Isol.READ_COMMITTED, Op.Insert, Expected.Soundness));
-            res.add(Arguments.of(Isol.REPEATABLE_READ, Op.Insert, Expected.Soundness));
-            res.add(Arguments.of(Isol.SERIALIZABLE, Op.Insert, Expected.Soundness));
-            res.add(Arguments.of(Isol.SNAPSHOT, Op.Insert, Expected.Soundness));
-
-            res.add(Arguments.of(Isol.READ_UNCOMMITTED, Op.Update, Expected.DirtyRead));
-            res.add(Arguments.of(Isol.READ_COMMITTED, Op.Update, Expected.Soundness));
-            res.add(Arguments.of(Isol.REPEATABLE_READ, Op.Update, Expected.Soundness));
-            res.add(Arguments.of(Isol.SERIALIZABLE, Op.Update, Expected.Soundness));
-            res.add(Arguments.of(Isol.SNAPSHOT, Op.Update, Expected.Soundness));
-
-            res.add(Arguments.of(Isol.READ_UNCOMMITTED, Op.Delete, Expected.DirtyRead));
-            res.add(Arguments.of(Isol.READ_COMMITTED, Op.Delete, Expected.Soundness));
-            res.add(Arguments.of(Isol.REPEATABLE_READ, Op.Delete, Expected.Soundness));
-            res.add(Arguments.of(Isol.SERIALIZABLE, Op.Delete, Expected.Soundness));
-            res.add(Arguments.of(Isol.SNAPSHOT, Op.Delete, Expected.Soundness));
+            for (Isol isol : Isol.values()) {
+                for (Op op : List.of(Op.Insert, Op.Update, Op.Delete)) {
+                    // We expect "Soundness" of the operation (i.e. NO "dirty read" aka
+                    // "reading of data yet to be committed") in all cases EXCEPT in
+                    // isolation level "ANSI READ (even) UNCOMMITTED".
+                    final var expected = (isol == Isol.READ_UNCOMMITTED) ? Expected.DirtyRead : Expected.Soundness;
+                    res.add(Arguments.of(new Config(isol, op, PrintException.No), expected));
+                }
+            }
         }
         return res.stream();
     }
 
+    // ---
+    // Increase this for running the test more than once in a loop
+    // ---
+
+    private final static int rounds = 1;
+
+    // ---
+    // The test method to call. As the annotation says, it gets its arguments from
+    // method "provideTestArgStream".
+    // ---
+
     @ParameterizedTest
     @MethodSource("provideTestArgStream")
-    void testDirtyRead(@NotNull Isol isol, @NotNull Op op, @NotNull Expected expected) {
+    void testDirtyRead(@NotNull Config config, @NotNull Expected expected) {
         setupDb();
-        final var ac = new AgentContainer_DirtyRead(db, isol, op, new Setup(initRow, updateRow, insertRow, deleteRow), txGw);
+        final var ac = new AgentContainer_DirtyRead(db, txGw, config, dbConfig);
         {
             ac.startAll();
             ac.joinAll();
         }
         // None of the threads should have terminated badly!
-        Assertions.assertThat(ac.isAnyThreadTerminatedBadly()).isFalse();
+        Assertions.assertThat(ac.isAnyAgentTerminatedBadly()).isFalse();
         // Result exist
         Assertions.assertThat(ac.getReaderRunnable().getResult()).isPresent();
-        List<Stuff> result = ac.getReaderRunnable().getResult().orElseThrow();
+        List<Stuff> result = Collections.unmodifiableList(ac.getReaderRunnable().getResult().orElseThrow());
         switch (expected) {
-            case DirtyRead -> expectDirtyRead(op, result);
-            case Soundness -> expectSoundness(op, result);
+            case DirtyRead -> assertDirtyRead(config.op(), result);
+            case Soundness -> assertSoundness(config.op(), result);
         }
         finallyExpectNoChangesBecauseModifierRolledBack();
-        log.info("OK: Dirty Read, isolation level {}, operation {}, expected {}", isol, op, expected);
+        log.info("OK: Dirty Read, isolation level {}, operation {}, expected {}", config.isol(), config.op(), expected);
     }
 
-    private void expectSoundness(@NotNull Op op, @NotNull List<Stuff> result) {
+    private void assertSoundness(@NotNull Op op, @NotNull List<Stuff> result) {
         List<Stuff> expectedStuff = switch (op) {
             // we did not see any updates, only the "initial row" (selection was by id)
-            case Update -> List.of(initRow);
+            case Update -> List.of(dbConfig.initRow);
             // the row to delete was not missing (selection was by id)
-            case Delete -> List.of(deleteRow);
+            case Delete -> List.of(dbConfig.deleteRow);
             // the inserted row was not yet there (selection was by id)
             case Insert -> List.of();
             default -> throw new IllegalArgumentException("Unhandled op " + op);
@@ -138,14 +130,14 @@ public class TestElicitingDirtyReads {
         Assertions.assertThat(result).isEqualTo(expectedStuff);
     }
 
-    private void expectDirtyRead(@NotNull Op op, @NotNull List<Stuff> result) {
+    private void assertDirtyRead(@NotNull Op op, @NotNull List<Stuff> result) {
         List<Stuff> expectedStuff = switch (op) {
             // we saw the updated but uncommitted row (selection was by id)
-            case Update -> List.of(updateRow);
+            case Update -> List.of(dbConfig.updateRow);
             // the "deleted" but uncommitted row was indeed missing (selection was by id)
             case Delete -> List.of();
             // we saw the inserted but uncommitted row (selection was by id)
-            case Insert -> List.of(insertRow);
+            case Insert -> List.of(dbConfig.insertRow);
             default -> throw new IllegalArgumentException("Unhandled op " + op);
         };
         Assertions.assertThat(result).isEqualTo(expectedStuff);
@@ -153,7 +145,7 @@ public class TestElicitingDirtyReads {
 
     private void finallyExpectNoChangesBecauseModifierRolledBack() {
         List<Stuff> actualStuff = db.readAll();
-        List<Stuff> expectedStuff = List.of(initRow, deleteRow);
+        List<Stuff> expectedStuff = List.of(dbConfig.initRow, dbConfig.deleteRow);
         Assertions.assertThat(actualStuff).isEqualTo(expectedStuff);
     }
 

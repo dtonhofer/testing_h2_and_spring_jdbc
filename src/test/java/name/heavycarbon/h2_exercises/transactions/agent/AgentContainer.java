@@ -15,12 +15,6 @@ import java.util.Map;
 @Slf4j
 public abstract class AgentContainer {
 
-    // A test may select on of the following operations
-    // "UpdateIntoPredicateSet" and "UpdateOutOfPredicateSet" are for eliciting phantom reads,
-    // where you update a record to move it into or out of the result set.
-
-    public enum Op {Unset, Insert, Update, Delete, UpdateIntoPredicateSet, UpdateOutOfPredicateSet}
-
     // This map is immutable
 
     private Map<AgentId, Agent> agentMap;
@@ -33,7 +27,7 @@ public abstract class AgentContainer {
             agentMapTmp.put(agent.getAgentId(), agent);
             agent.getThread().setDaemon(true);
             agent.getThread().setName(agent.getAgentId().toString());
-            agent.getRunnable().setAnyThreadTerminatedBadly(this::isAnyThreadTerminatedBadly);
+            agent.getRunnable().setAnyAgentTerminatedBadly(this::isAnyAgentTerminatedBadly);
         }
         this.agentMap = Collections.unmodifiableMap(agentMapTmp);
     }
@@ -56,22 +50,24 @@ public abstract class AgentContainer {
     // It makes no sense to synchronize this; the result depends on the momentary thread state.
     // This is called repeatedly from the individual threads to check whether everything is
     // still fine or whether they should exit early
-
-    // A value that indicates:
-
+    //
+    // Values of "agent state" from AgentRunnable:
+    //
+    // 0: Agent's thread not yet started (Thread.isAlive() probably returns false)
     // 1: Agent's thread has been started (Thread.isAlive() returns true)
     // 1: Agent's thread terminated unexpectedly (Thread.isAlive() returns false, again but the value is still 1)
+    // 2: Agent's thread terminated nicely/normally (Thread.isAlive() probably returns false)
 
-    public boolean isAnyThreadTerminatedBadly() {
+    public boolean isAnyAgentTerminatedBadly() {
         for (Agent agent : agentMap.values()) {
-            final int threadState = agent.getRunnable().getThreadState();
-            if (threadState == 0) {
+            final int agentState = agent.getRunnable().getAgentState();
+            if (agentState == 0) {
                 // Agent's thread not yet started (Thread.isAlive() probably returns false)
                 // Looks good!
-            } else if (threadState == 2) {
+            } else if (agentState == 2) {
                 // Agent's thread terminated nicely/normally (Thread.isAlive() probably returns false)
                 // Looks good!
-            } else if (threadState == 1) {
+            } else if (agentState == 1) {
                 // Agent's thread has been started...
                 // but if Thread.isAlive() returns false, then it terminated unexpectedly
                 if (agent.getThread().isAlive()) {
@@ -90,7 +86,7 @@ public abstract class AgentContainer {
 
     // It makes no sense to synchronize this; the result depends on the momentary thread state.
 
-    public boolean isAllThreadsTerminated() {
+    public boolean isAllAgentsTerminated() {
         return agentMap.values().stream().noneMatch(agent -> agent.getThread().isAlive());
     }
 
