@@ -304,39 +304,57 @@ GraphML file: [swml_read_and_write_skew.graphml](https://github.com/dtonhofer/te
 
 [TestElicitingDeadlock.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDeadlock.java)
 
-(THIS TEXT NEEDS REVIEW)
+Here we a number of scenarios. We consider three records:
 
-Here is a scenario for a "deadlock", which occurs when the database engine finds that the transactions have pretzelized themselves. The exception
-raised is a [`JdbcSQLTransactionRollbackException`](https://h2database.com/javadoc/org/h2/jdbc/JdbcSQLTransactionRollbackException.html) with the message
-`Deadlock detected. The current transaction was rolled back`.
+- `X`, the record which is updated by two transactions T1 (run by agent ALFA) and T2 (run by agent BRAVO), creating a conflict;
+- `Z`, an unrelated record in the same table as the one holding `X`;
+- `K`, an unrelated record in another table than the one holding `X`.
 
-In any isolation level above "READ COMMMITTED":
+The basic scenario is as follows (see the accompanying diagram):
 
-- Transaction T2 reads an existing data item X. If X is not read by T2, there won't be a deadlock!
-- Once T2 has read X, T1 updates it and then commits.
-- If T2 now tries to update X, an exception is raised to roll back T2, saying that a deadlock was detected. (T2 may or may not read X again before updating it, it doesn't matter)
+- Agent ALFA starts transaction T1 and agent BRAVO starts transaction T2.
+- In step 2, BRAVO manipulates `X`, `Z`, or `K` in a test-dependent operation. The following oerations are tried:
+   - `None`, (i.e. do nothing)
+   - `Read X`, `Update X`, (i.e. manipulate the record of conflict `X`)
+   - `Read Z`, `Update Z`, `Insert Z` (which initially does not exist for this case), `Delete Z` (i.e. manipulate a record `Z` in the same table as `X`)
+   - `Read K`, `Update K`, `Insert K` (which initially does not exist for this case), `Delete K` (i.e. manipulate a record `K` in another table than `X`)
+- In step 3, ALFA then updates `X` with an arbitrary value.
+  **At this point, ALFA may encounter a "timeout exception"** because it cannot acquire the lock to `X`, already held by T1.
+- If step 3 does not result in an exception, ALFA commits, moving to step 4.
+- In step 5, BRAVO then updates `X` with an arbitrary value.
+  **At this point, ALFA may encounter a "deadlock exception"** because H2 detects a
+  dependency problem, depending on the isolation level and the operation applied in step 2.
 
- Alternatively, a "shifted" version:
+The above I call the "late update" scenario as ALFA performs the update of `X` in step 3 _after_ BRAVO has performed the test-dependent operation of step 2.
+ 
+A variation is the "early update" scenario whereby ALFA performs the update of `X` in step 1 _before_ BRAVO performs the test-dependent operation in step 3. 
 
-- Transaction T1 updates an existing data item X.
-- After that transaction T2 reads data item X (if X is not read by T2, there is no deadlock!)
-- T1 then commits.
-- If T2 now tries to update X, an exception is raised to roll back T2, saying that a deadlock was detected. (T2 may or may not read X again before updating it, it doesn't matter)
+**Result for H2**
 
-The scenario is not a problem for isolation levesl "READ UNCOMMITED" and "READ COMMITTED".
+We observe the following, and it is unimportant whether this is a "late update" or "early update" scenario, unless the test-dependent operation is `Update X`: 
 
-In the illustration below, "action 0" only exists due to implementation issues. 
-The code for the thread running T1 has a structure that demands it must first encounter an action before entering a transaction. So be it!
+- In all isolation levels, if the test-dependent operation is `Update X` then ALFA will
+  get a "timeout exception" when trying to acquire the lock on `X` in step 3, and roll back.
+  BRAVO then commits and thus has updated `X` successfully. In the "early update" scenario,
+  the "timeout exception" will happen for BRAVO instead.
+- In levels "READ UNCOMMITTED" and "READ COMMITTED" (this not being operation `Update X`)
+  both transactions terminate successfully and BRAVO wins the update race because it committs last.
+- In level "REPEATABLE READ" (this not being operation `Update X`) BRAVO gets a
+  "deadlock exception" in step 5 for the operations listed below. Otherwise both transactions terminate successfully:
+   - `Read X`, 
+   - `Read Z`, `Update Z`, `Delete Z` (but not `Insert Z`)
+- In levels "SERIALIZABLE" or "SNAPSHOT" (this not being operation `Update X`) BRAVO gets a
+  "deadlock exception" in step 5 for *all* operations tried except for operation `None`, for which both transactions terminate successfully.
+  Thus H2 feels very conservative:
+   - `Read X`, 
+   - `Read Z`, `Update Z`, `Delete Z`, `Insert Z`
+   - `Read K`, `Update K`, `Delete K`, `Insert K`
 
-<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_simple.png" alt="Simple deadlock swimlanes" width="600" />
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock.png" alt="Deadlock swimlanes" width="600" />
 
-GraphML file: [swml_deadlock_simple.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_simple.graphml)
+GraphML file: [swml_deadlock.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock.graphml)
 
-<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_write_only.png" alt="Deadlock using only writes swimlanes" width="600" />
+<img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_variation.png" alt="Deadlock variation swimlanes" width="600" />
 
-GraphML file: [swml_deadlock_write_only.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_write_only.graphml)
-
-It seesm that, as long as two transaction T1 and T2 were active concurrently, T1 wrote X, then committed and T2 read or wrote _something_ 
-then (after T1's commit), writes X too, a deadlock is detected. If I reflect on what could go wrong in such scenarios,
-I don't see the reason for throwing. Is H2 just extremely pessimistic/conservative?
+GraphML file: [swml_deadlock_variation.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_variation.graphml)
 
