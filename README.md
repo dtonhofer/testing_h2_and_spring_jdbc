@@ -319,10 +319,11 @@ The basic scenario is as follows (see the accompanying diagram):
    - `Read Z`, `Update Z`, `Insert Z` (which initially does not exist for this case), `Delete Z` (i.e. manipulate a record `Z` in the same table as `X`)
    - `Read K`, `Update K`, `Insert K` (which initially does not exist for this case), `Delete K` (i.e. manipulate a record `K` in another table than `X`)
 - In step 3, ALFA then updates `X` with an arbitrary value.
-  **At this point, ALFA may encounter a "timeout exception"** because it cannot acquire the lock to `X`, already held by T1.
+  **At this point, ALFA may encounter a "timeout exception"** (`org.h2.jdbc.JdbcSQLTimeoutException: Timeout trying to lock table "STUFF"`) because
+  it cannot acquire the lock to `X`, already held by T1.
 - If step 3 does not result in an exception, ALFA commits, moving to step 4.
 - In step 5, BRAVO then updates `X` with an arbitrary value.
-  **At this point, ALFA may encounter a "deadlock exception"** because H2 detects a
+  **At this point, ALFA may encounter a "deadlock exception"** (`org.h2.jdbc.JdbcSQLTransactionRollbackException: Deadlock detected`) because H2 detects a
   dependency problem, depending on the isolation level and the operation applied in step 2.
 
 The above I call the "late update" scenario as ALFA performs the update of `X` in step 3 _after_ BRAVO has performed the test-dependent operation of step 2.
