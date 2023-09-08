@@ -185,6 +185,8 @@ Everything is as expected. All three scenarios show up in isolation level ANSI "
 
 ### Test 2: Eliciting "Non-Repeatable Reads" (aka "Fuzzy Reads")
 
+[TestElicitingNonRepeatableReads.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingNonRepeatableReads.java)
+
 A "non-repeatable read" (phenomenon "P2" in *A Critique of ANSI SQL Isolation Levels*) happens when transaction T2 (the "reader" transaction)
 reads data item D, obtaining value item x. Transaction T1 (the "modifier" transaction) then updates D to y and commits. T2 then re-reads D and no longer finds the value x 
 seen earlier but the value y written by T1, i.e. data entrained via reads into T2 may unexpectedly change during T2.
@@ -298,9 +300,11 @@ We will pass on this for now, but here is a swimline to explain them (if I under
 
 GraphML file: [swml_read_and_write_skew.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_read_and_write_skew.graphml)
 
-### Test 6: Eliciting "Deadlock" (using a read)
+### Test 6: Eliciting "Deadlock"
 
-(Working on unifiying Test 6 and Test 7)
+[TestElicitingDeadlock.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDeadlock.java)
+
+(THIS TEXT NEEDS REVIEW)
 
 Here is a scenario for a "deadlock", which occurs when the database engine finds that the transactions have pretzelized themselves. The exception
 raised is a [`JdbcSQLTransactionRollbackException`](https://h2database.com/javadoc/org/h2/jdbc/JdbcSQLTransactionRollbackException.html) with the message
@@ -328,17 +332,9 @@ The code for the thread running T1 has a structure that demands it must first en
 
 GraphML file: [swml_deadlock_simple.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_simple.graphml)
 
-[TestElicitingDeadlockSimple.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDeadlockSimple.java)
-
-### Test 7: Eliciting "Deadlock" (using a write)
-
 <img src="https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_write_only.png" alt="Deadlock using only writes swimlanes" width="600" />
 
 GraphML file: [swml_deadlock_write_only.graphml](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/doc/swimlanes/swml_deadlock_write_only.graphml)
-
-[TestElicitingDeadlockOnlyWriting.java](https://github.com/dtonhofer/testing_h2_and_spring_jdbc/blob/master/src/test/java/name/heavycarbon/h2_exercises/transactions/TestElicitingDeadlockOnlyWriting.java)
-
-It would be interesting to test eliciting a deadlock while writing/reading from different tables. TO BE DONE!
 
 It seesm that, as long as two transaction T1 and T2 were active concurrently, T1 wrote X, then committed and T2 read or wrote _something_ 
 then (after T1's commit), writes X too, a deadlock is detected. If I reflect on what could go wrong in such scenarios,
