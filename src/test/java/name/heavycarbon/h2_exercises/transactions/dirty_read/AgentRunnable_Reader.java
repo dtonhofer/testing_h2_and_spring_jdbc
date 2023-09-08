@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Slf4j
-public class AgentRunnable_DirtyRead_Reader extends AgentRunnableWithAllActionsInsideTransaction {
+public class AgentRunnable_Reader extends AgentRunnableWithAllActionsInsideTransaction {
 
     private final @NotNull Config config;
     private final @NotNull DbConfig dbConfig;
@@ -23,12 +23,12 @@ public class AgentRunnable_DirtyRead_Reader extends AgentRunnableWithAllActionsI
 
     private List<Stuff> result;
 
-    public AgentRunnable_DirtyRead_Reader(@NotNull Db db,
-                                          @NotNull AppState appState,
-                                          @NotNull AgentId agentId,
-                                          @NotNull TransactionalGateway txGw,
-                                          @NotNull Config config,
-                                          @NotNull DbConfig dbConfig) {
+    public AgentRunnable_Reader(@NotNull Db db,
+                                @NotNull AppState appState,
+                                @NotNull AgentId agentId,
+                                @NotNull TransactionalGateway txGw,
+                                @NotNull Config config,
+                                @NotNull DbConfig dbConfig) {
         super(db, appState, agentId, config.isol(), config.pex(), txGw);
         this.config = config;
         this.dbConfig = dbConfig;

@@ -3,13 +3,13 @@ package name.heavycarbon.h2_exercises.transactions;
 import lombok.extern.slf4j.Slf4j;
 import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
 import name.heavycarbon.h2_exercises.transactions.common.DualListOfStuff;
-import name.heavycarbon.h2_exercises.transactions.common.ListOfStuffHandling.WhatDo;
+import name.heavycarbon.h2_exercises.transactions.common.TestCommon.WhatDo;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import name.heavycarbon.h2_exercises.transactions.db.SessionManip;
 import name.heavycarbon.h2_exercises.transactions.db.Stuff;
-import name.heavycarbon.h2_exercises.transactions.phantom_read.AgentContainer_PhantomRead;
+import name.heavycarbon.h2_exercises.transactions.phantom_read.AgentContainer;
 import name.heavycarbon.h2_exercises.transactions.phantom_read.Config;
 import name.heavycarbon.h2_exercises.transactions.phantom_read.Config.Op;
 import name.heavycarbon.h2_exercises.transactions.phantom_read.Config.PhantomicPredicate;
@@ -28,8 +28,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static name.heavycarbon.h2_exercises.transactions.common.ListOfStuffHandling.assertListEquality;
-import static name.heavycarbon.h2_exercises.transactions.common.ListOfStuffHandling.checkListEquality;
+import static name.heavycarbon.h2_exercises.transactions.common.TestCommon.assertListEquality;
+import static name.heavycarbon.h2_exercises.transactions.common.TestCommon.checkListEquality;
 
 // ---
 // "Phantom Reads" are a "strong" unsoundness that occur in isolation level READ_UNCOMMITTED and lower.
@@ -119,7 +119,7 @@ public class TestElicitingPhantomReads {
         Assertions.assertThat(db.readAll()).isEqualTo(Stuff.sortById(dbConfig.initialStuff));
         // Let's go!
         log.info("STARTING: Phantom Read, isolation level {}, operation {}, predicate {}, expecting {}", config.isol(), config.op(), config.phantomicPredicate(), expected);
-        final var ac = new AgentContainer_PhantomRead(db, txGw, config, dbConfig);
+        final var ac = new AgentContainer(db, txGw, config, dbConfig);
         {
             ac.startAll();
             ac.joinAll();

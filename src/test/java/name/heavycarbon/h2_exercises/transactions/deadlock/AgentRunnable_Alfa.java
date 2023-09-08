@@ -1,4 +1,4 @@
-package name.heavycarbon.h2_exercises.transactions.deadlock_simple;
+package name.heavycarbon.h2_exercises.transactions.deadlock;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -12,12 +12,12 @@ import java.time.Duration;
 import java.time.Instant;
 
 @Slf4j
-public class AgentRunnable_SubAlfa extends AgentRunnable_Alfa {
+public class AgentRunnable_Alfa extends AgentRunnable_AbstractAlfa {
 
     @Getter
     private Exception exceptionSeen = null;
 
-    public AgentRunnable_SubAlfa(
+    public AgentRunnable_Alfa(
             @NotNull Db db,
             @NotNull AppState appState,
             @NotNull AgentId agentId,

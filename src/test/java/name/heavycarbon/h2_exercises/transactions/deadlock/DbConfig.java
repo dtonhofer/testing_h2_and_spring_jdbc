@@ -1,9 +1,8 @@
-package name.heavycarbon.h2_exercises.transactions.deadlock_simple;
+package name.heavycarbon.h2_exercises.transactions.deadlock;
 
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.EnsembleId;
 import name.heavycarbon.h2_exercises.transactions.db.Stuff;
-import name.heavycarbon.h2_exercises.transactions.db.StuffId;
 import org.jetbrains.annotations.NotNull;
 
 public class DbConfig {

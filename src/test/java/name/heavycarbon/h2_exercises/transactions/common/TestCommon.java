@@ -6,7 +6,11 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-public abstract class ListOfStuffHandling {
+// ---
+// Handling lists for tests
+// ---
+
+public abstract class TestCommon {
 
     public enum WhatDo { Check, Assert }
 

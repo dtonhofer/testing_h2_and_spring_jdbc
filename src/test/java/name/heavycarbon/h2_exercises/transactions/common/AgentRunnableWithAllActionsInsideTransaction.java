@@ -13,11 +13,11 @@ public abstract class AgentRunnableWithAllActionsInsideTransaction extends Agent
     // Reference to a class that has a method annotated @Transactional
 
     @Getter
+    @NotNull
     private final TransactionalGateway txGw;
 
+    @NotNull
     private final PrintException pex;
-
-    // ---
 
     public AgentRunnableWithAllActionsInsideTransaction(@NotNull Db db,
                                                         @NotNull AppState appState,
@@ -39,7 +39,9 @@ public abstract class AgentRunnableWithAllActionsInsideTransaction extends Agent
     public void run() {
         setAgentStarted();
         startMessage();
-        Randomizer.randomizeStartup(); // not really needed
+        // not really needed
+        // TODO: Should be configurable.
+        Randomizer.randomizeStartup();
         try {
             enterTransaction();
         } catch (Exception ex) {

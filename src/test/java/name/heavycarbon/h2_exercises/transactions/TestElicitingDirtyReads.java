@@ -7,7 +7,7 @@ import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import name.heavycarbon.h2_exercises.transactions.db.SessionManip;
 import name.heavycarbon.h2_exercises.transactions.db.Stuff;
-import name.heavycarbon.h2_exercises.transactions.dirty_read.AgentContainer_DirtyRead;
+import name.heavycarbon.h2_exercises.transactions.dirty_read.AgentContainer;
 import name.heavycarbon.h2_exercises.transactions.dirty_read.Config;
 import name.heavycarbon.h2_exercises.transactions.dirty_read.Config.Op;
 import name.heavycarbon.h2_exercises.transactions.dirty_read.DbConfig;
@@ -99,7 +99,7 @@ public class TestElicitingDirtyReads {
     @MethodSource("provideTestArgStream")
     void testDirtyRead(@NotNull Config config, @NotNull Expected expected) {
         setupDb();
-        final var ac = new AgentContainer_DirtyRead(db, txGw, config, dbConfig);
+        final var ac = new AgentContainer(db, txGw, config, dbConfig);
         {
             ac.startAll();
             ac.joinAll();

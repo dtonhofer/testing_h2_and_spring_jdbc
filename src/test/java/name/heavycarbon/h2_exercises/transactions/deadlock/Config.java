@@ -1,4 +1,4 @@
-package name.heavycarbon.h2_exercises.transactions.deadlock_simple;
+package name.heavycarbon.h2_exercises.transactions.deadlock;
 
 import lombok.Value;
 import name.heavycarbon.h2_exercises.transactions.agent.PrintException;
@@ -25,6 +25,7 @@ public class Config {
 
     public enum BravoFirstOp {
 
+        None("x", true),
         ReadX("x", true), UpdateX("x", true),
         ReadZ("z", true), UpdateZ("z", true), InsertZ("z", false), DeleteZ("x", true),
         ReadK("k", true), UpdateK("k", true), InsertK("k", false), DeleteK("k", true);

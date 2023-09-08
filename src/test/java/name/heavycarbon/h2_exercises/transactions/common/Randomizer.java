@@ -1,5 +1,10 @@
 package name.heavycarbon.h2_exercises.transactions.common;
 
+// ---
+// This is called if we want to have a random small delay at the
+// startup of threads. To see whether anything changes.
+// ---
+
 public abstract class Randomizer {
 
     public static void randomizeStartup() {

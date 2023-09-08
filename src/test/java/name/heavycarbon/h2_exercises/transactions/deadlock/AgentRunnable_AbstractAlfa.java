@@ -1,4 +1,4 @@
-package name.heavycarbon.h2_exercises.transactions.deadlock_simple;
+package name.heavycarbon.h2_exercises.transactions.deadlock;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -6,11 +6,10 @@ import name.heavycarbon.h2_exercises.transactions.agent.*;
 import name.heavycarbon.h2_exercises.transactions.common.Randomizer;
 import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
-import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import org.jetbrains.annotations.NotNull;
 
 @Slf4j
-public abstract class AgentRunnable_Alfa extends AgentRunnable {
+public abstract class AgentRunnable_AbstractAlfa extends AgentRunnable {
 
     // Reference to a class that has a method annotated @Transactional
 
@@ -23,12 +22,12 @@ public abstract class AgentRunnable_Alfa extends AgentRunnable {
     @NotNull
     protected final DbConfig dbConfig;
 
-    public AgentRunnable_Alfa(@NotNull Db db,
-                              @NotNull AppState appState,
-                              @NotNull AgentId agentId,
-                              @NotNull TransactionalGateway txGw,
-                              @NotNull Config config,
-                              @NotNull DbConfig dbConfig) {
+    public AgentRunnable_AbstractAlfa(@NotNull Db db,
+                                      @NotNull AppState appState,
+                                      @NotNull AgentId agentId,
+                                      @NotNull TransactionalGateway txGw,
+                                      @NotNull Config config,
+                                      @NotNull DbConfig dbConfig) {
         super(db, appState, agentId, config.getIsol());
         this.txGw = txGw;
         this.config = config;

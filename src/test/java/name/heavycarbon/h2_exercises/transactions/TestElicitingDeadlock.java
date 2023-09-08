@@ -6,11 +6,11 @@ import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import name.heavycarbon.h2_exercises.transactions.db.SessionManip;
-import name.heavycarbon.h2_exercises.transactions.deadlock_simple.AgentContainer_DeadlockSimple;
-import name.heavycarbon.h2_exercises.transactions.deadlock_simple.Config;
-import name.heavycarbon.h2_exercises.transactions.deadlock_simple.Config.AlfaUpdateTiming;
-import name.heavycarbon.h2_exercises.transactions.deadlock_simple.Config.BravoFirstOp;
-import name.heavycarbon.h2_exercises.transactions.deadlock_simple.DbConfig;
+import name.heavycarbon.h2_exercises.transactions.deadlock.AgentContainer;
+import name.heavycarbon.h2_exercises.transactions.deadlock.Config;
+import name.heavycarbon.h2_exercises.transactions.deadlock.Config.AlfaUpdateTiming;
+import name.heavycarbon.h2_exercises.transactions.deadlock.Config.BravoFirstOp;
+import name.heavycarbon.h2_exercises.transactions.deadlock.DbConfig;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -65,19 +65,20 @@ public class TestElicitingDeadlock {
     private static Expected whatToExpect(Isol isol, BravoFirstOp bravoFirstOp) {
         if (bravoFirstOp == BravoFirstOp.UpdateX) {
             // Case of "AlfaUpdateTiming.Late":
-            // Bravo updates X in step 2, and Alfa tries to update X in step 3
-            // Alfo will not be able to acquire a lock to X in step 3 and
-            // terminate with a "timeout exception".
+            // BRAVO updates X in step 2, and ALFA tries to update X in step 3
+            // ALFA will not be able to acquire a lock to X in step 3 and
+            // terminates with a "timeout exception".
             // Case of "AlfaUpdateTiming.Early":
-            // Alfa updates X in step 1, and Bravo tries to update X in step 2
-            // Bravo will not be able to acquire a lock to X in step 2 and
+            // ALFA updates X in step 1, and Bravo tries to update X in step 2
+            // BRAVO will not be able to acquire a lock to X in step 2 and
             // terminate with a "timeout exception".
             // This behaviour occurs in all isolation levels. As expected.
             return Expected.TimeoutException;
         } else if (isol == Isol.READ_UNCOMMITTED || isol == Isol.READ_COMMITTED) {
             // Isolation levels ANSI "READ (even) UNCOMMITTED" and
-            // ANDI "READ (only) COMMITTED" see no problem. The transaction committing
-            // last wins the update race, and Bravo's action in step 2 is of no importance,
+            // ANSI "READ (only) COMMITTED" see no problem.
+            // The transaction committing last (i.e. BRAVO) wins the update
+            // race, and BRAVO's action in step 2 is of no importance,
             return Expected.SmoothSailing;
         } else if (isol == Isol.REPEATABLE_READ) {
             // In this isolation level, Bravo gets a "deadlock exception" if reads X in
@@ -100,15 +101,17 @@ public class TestElicitingDeadlock {
             // Any operation at all, be in on an unrelated record Z in the same table or an
             // unrelated record K in an unrelated table, causes Bravo to get a "deadlock exception".
             final var deadlockingOps = List.of(BravoFirstOp.ReadX,
-                    BravoFirstOp.ReadZ, BravoFirstOp.UpdateZ, BravoFirstOp.InsertZ, BravoFirstOp.DeleteZ,
-                    BravoFirstOp.DeleteK, BravoFirstOp.ReadK, BravoFirstOp.UpdateK, BravoFirstOp.InsertK);
+                    BravoFirstOp.ReadZ, BravoFirstOp.UpdateZ, BravoFirstOp.DeleteZ, BravoFirstOp.InsertZ,
+                    BravoFirstOp.ReadK, BravoFirstOp.UpdateK, BravoFirstOp.DeleteK, BravoFirstOp.InsertK);
             if (deadlockingOps.contains(bravoFirstOp)) {
                 return Expected.DeadlockException;
-            } else {
+            } else if (bravoFirstOp == BravoFirstOp.None) {
                 return Expected.SmoothSailing;
+            } else {
+                throw new IllegalArgumentException("Everything ends in deadlock");
             }
         } else {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Incomplete code");
         }
     }
 
@@ -153,7 +156,7 @@ public class TestElicitingDeadlock {
     @MethodSource("provideTestArgStream")
     void testDeadlock(@NotNull Config config, Expected expected) {
         setupDb(config.getBravoFirstOp());
-        final var ac = new AgentContainer_DeadlockSimple(db, txGw, config, dbConfig);
+        final var ac = new AgentContainer(db, txGw, config, dbConfig);
         {
             ac.startAll();
             ac.joinAll();
@@ -168,13 +171,13 @@ public class TestElicitingDeadlock {
         }
     }
 
-    private void assertSmoothSailing(@NotNull AgentContainer_DeadlockSimple ac) {
+    private void assertSmoothSailing(@NotNull AgentContainer ac) {
         Assertions.assertThat(ac.isAnyAgentTerminatedBadly()).isFalse();
         // Bravo (the transaction that updates last) won writing X
         Assertions.assertThat(dbConfig.readX(db)).isEqualTo(dbConfig.updateString_bravo_did_x);
     }
 
-    private void assertTimeoutException(@NotNull AgentContainer_DeadlockSimple ac, @NotNull AlfaUpdateTiming aut) {
+    private void assertTimeoutException(@NotNull AgentContainer ac, @NotNull AlfaUpdateTiming aut) {
         Assertions.assertThat(ac.isAnyAgentTerminatedBadly()).isTrue();
         if (aut == AlfaUpdateTiming.Late) {
             assertIsTimeoutException(ac.getAlfa().getExceptionSeen());
@@ -189,7 +192,7 @@ public class TestElicitingDeadlock {
         }
     }
 
-    private void assertDeadlockException(@NotNull AgentContainer_DeadlockSimple ac) {
+    private void assertDeadlockException(@NotNull AgentContainer ac) {
         Assertions.assertThat(ac.isAnyAgentTerminatedBadly()).isTrue();
         assertIsLockException(ac.getBravo().getExceptionSeen());
         // Alfa (the transaction that commits first) won writing X
@@ -197,10 +200,13 @@ public class TestElicitingDeadlock {
     }
 
     private void assertIsLockException(Exception ex) {
+        // "org.h2.jdbc.JdbcSQLTransactionRollbackException: Deadlock detected"
         Assertions.assertThat(ex).isInstanceOf(org.springframework.dao.CannotAcquireLockException.class);
     }
 
     private void assertIsTimeoutException(Exception ex) {
+        // "org.h2.jdbc.JdbcSQLTimeoutException: Timeout trying to lock table "STUFF""
         Assertions.assertThat(ex).isInstanceOf(org.springframework.dao.QueryTimeoutException.class);
+        // Assertions.assertThat(ex).hasCauseInstanceOf(org.h2.jdbc.JdbcSQLTimeoutException.class);
     }
 }

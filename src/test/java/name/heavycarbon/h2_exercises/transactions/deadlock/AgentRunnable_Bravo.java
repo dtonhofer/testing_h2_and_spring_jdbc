@@ -1,4 +1,4 @@
-package name.heavycarbon.h2_exercises.transactions.deadlock_simple;
+package name.heavycarbon.h2_exercises.transactions.deadlock;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -80,6 +80,7 @@ public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransa
 
     private void executeOpInState2_switch() {
         switch (config.getBravoFirstOp()) {
+            case None -> {}
             case ReadX -> getDb().readById(dbConfig.stuff_x.getId());
             case UpdateX -> getDb().updatePayloadById(dbConfig.stuff_x.getId(), dbConfig.updateString_bravo_did_x_early);
             case ReadZ -> getDb().readById(dbConfig.stuff_z.getId());
@@ -90,7 +91,7 @@ public class AgentRunnable_Bravo extends AgentRunnableWithAllActionsInsideTransa
             case InsertK -> getDb().insertAlternate(dbConfig.stuff_k);
             case UpdateK -> getDb().updatePayloadByIdAlternate(dbConfig.stuff_k.getId(), dbConfig.updateString_bravo_did_k_early);
             case DeleteK -> getDb().deleteByIdAlternate(dbConfig.stuff_k.getId());
-            default -> throw new IllegalArgumentException("Unhandled first top: " + config.getBravoFirstOp());
+            default -> throw new IllegalArgumentException("Unknown operation: " + config.getBravoFirstOp());
         }
     }
 

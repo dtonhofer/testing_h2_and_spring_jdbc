@@ -6,7 +6,7 @@ import name.heavycarbon.h2_exercises.transactions.common.TransactionalGateway;
 import name.heavycarbon.h2_exercises.transactions.db.Db;
 import name.heavycarbon.h2_exercises.transactions.db.Isol;
 import name.heavycarbon.h2_exercises.transactions.db.SessionManip;
-import name.heavycarbon.h2_exercises.transactions.sql_timeout.AgentContainer_SqlTimeout;
+import name.heavycarbon.h2_exercises.transactions.sql_timeout.AgentContainer;
 import name.heavycarbon.h2_exercises.transactions.sql_timeout.Config;
 import name.heavycarbon.h2_exercises.transactions.sql_timeout.DbConfig;
 import org.assertj.core.api.Assertions;
@@ -78,7 +78,7 @@ public class TestElicitingSqlTimeout {
     void testSqlTimeoutException(@NotNull Isol isol) {
         setupDb();
         final var config = new Config(isol, PrintException.No);
-        final var ac = new AgentContainer_SqlTimeout(db, txGw, config, dbConfig);
+        final var ac = new AgentContainer(db, txGw, config, dbConfig);
         {
             ac.startAll();
             ac.joinAll();
